@@ -46,7 +46,9 @@ async function main() {
 
   // Load furniture data
   console.log('加载家具数据...');
-  const furnitureFiles = readdirSync(furnitureTerrainDir).filter(f => f.startsWith('furniture-') && f.endsWith('.json'));
+  const furnitureFiles = readdirSync(furnitureTerrainDir).filter(f =>
+    (f.startsWith('furniture-') || f.startsWith('furniture_')) && f.endsWith('.json')
+  );
   for (const file of furnitureFiles) {
     try {
       const filePath = join(furnitureTerrainDir, file);
@@ -58,7 +60,7 @@ async function main() {
       // Skip errors silently
     }
   }
-  console.log(`✅ 加载了 ${furnitureLoader.getAll().length} 个家具定义`);
+  console.log(`✅ 从 ${furnitureFiles.length} 个文件加载了 ${furnitureLoader.getAll().length} 个家具定义`);
 
   // Load palettes
   console.log('\n加载调色板数据...');

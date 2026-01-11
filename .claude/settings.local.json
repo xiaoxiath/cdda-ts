@@ -25,7 +25,9 @@
       "Bash(done)",
       "Bash(tsx:*)",
       "Bash(npx tsx:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: implement copy-from inheritance and add CLI tools\n\nImplement copy-from inheritance for Terrain, Furniture, and Trap systems\nto support Cataclysm-DDA''s template-based object definitions. Added\nCLI tools for debugging and validating all game object types.\n\nChanges:\n- Added copy-from inheritance support to Terrain, Furniture, and Trap parsers\n- Implemented two-pass loading: store raw definitions, then resolve inheritance\n- Added CLI tools for Terrain, Furniture, Trap, Creature, and NPC debugging\n- Fixed validation rules to accept CDDA-specific values \\(-1, 99, etc.\\)\n- Enhanced palette resolver with better inheritance handling\n\nValidation results:\n- Terrain: 34 issues → 0 issues\n- Furniture: 351 issues → 0 issues  \n- Trap: 78 issues → 0 issues\nEOF\n\\)\")",
+      "Bash(git add:*)"
     ]
   }
 }

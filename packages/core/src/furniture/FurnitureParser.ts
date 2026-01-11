@@ -36,6 +36,7 @@ export interface FurnitureJson {
   emitters?: Record<string, EmissionJson>;
   connecting?: number;
   skin?: string;
+  copy_from?: string;  // For inheritance
 }
 
 /**
@@ -114,6 +115,9 @@ export interface EmissionJson {
  * 家具 JSON 解析器
  */
 export class FurnitureParser {
+  // Store all raw JSON objects (including abstract) for inheritance resolution
+  private rawDefinitions: Map<string, FurnitureJson> = new Map();
+
   /**
    * 解析家具对象
    */
@@ -281,5 +285,113 @@ export class FurnitureParser {
     });
 
     return new Map<string, EmissionData>(entries);
+  }
+
+  /**
+   * Store raw furniture definitions (including abstract ones) for inheritance
+   */
+  storeRawDefinitions(jsonArray: FurnitureJson[]): void {
+    for (const obj of jsonArray) {
+      // Get identifier - could be 'id' or 'abstract'
+      const identifier = obj.id || (obj as any).abstract;
+      if (identifier) {
+        this.rawDefinitions.set(identifier, obj);
+      }
+    }
+  }
+
+  /**
+   * Clear stored raw definitions
+   */
+  clearRawDefinitions(): void {
+    this.rawDefinitions.clear();
+  }
+
+  /**
+   * Resolve copy-from inheritance for a furniture JSON object
+   */
+  resolveInheritance(obj: FurnitureJson): FurnitureJson {
+    const result: FurnitureJson = { ...obj };
+
+    // Handle copy_from field (supports both 'copy-from' and 'copy_from')
+    const copyFrom = (obj as any)['copy-from'] || obj.copy_from;
+    if (copyFrom) {
+      const parent = this.rawDefinitions.get(copyFrom);
+      if (parent) {
+        // Recursively resolve parent's inheritance first
+        const resolvedParent = this.resolveInheritance(parent);
+        // Merge parent properties into result (child overrides parent)
+        this.mergeProperties(result, resolvedParent);
+      } else {
+        console.warn(`Warning: copy-from parent '${copyFrom}' not found for furniture '${obj.id}'`);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Merge parent properties into child object (child takes precedence)
+   */
+  private mergeProperties(child: FurnitureJson, parent: FurnitureJson): void {
+    // Merge simple properties (only if child doesn't have them)
+    if (!child.name && parent.name) child.name = parent.name;
+    if (!child.description && parent.description) child.description = parent.description;
+    if (!child.symbol && parent.symbol) child.symbol = parent.symbol;
+    if (!child.color && parent.color) child.color = parent.color;
+    if (child.move_cost_mod === undefined && parent.move_cost_mod !== undefined) child.move_cost_mod = parent.move_cost_mod;
+    if (child.move_cost === undefined && parent.move_cost !== undefined) child.move_cost = parent.move_cost;
+    if (child.coverage === undefined && parent.coverage !== undefined) child.coverage = parent.coverage;
+    if (child.comfort === undefined && parent.comfort !== undefined) child.comfort = parent.comfort;
+    if (child.floor_bedding_warmth === undefined && parent.floor_bedding_warmth !== undefined) child.floor_bedding_warmth = parent.floor_bedding_warmth;
+    if (child.required_str === undefined && parent.required_str !== undefined) child.required_str = parent.required_str;
+    if (child.mass === undefined && parent.mass !== undefined) child.mass = parent.mass;
+    if (child.volume === undefined && parent.volume !== undefined) child.volume = parent.volume;
+    if (child.keg_capacity === undefined && parent.keg_capacity !== undefined) child.keg_capacity = parent.keg_capacity;
+    if (child.max_volume === undefined && parent.max_volume !== undefined) child.max_volume = parent.max_volume;
+    if (child.emitted_light === undefined && parent.emitted_light !== undefined) child.emitted_light = parent.emitted_light;
+    if (child.light === undefined && parent.light !== undefined) child.light = parent.light;
+    if (child.connecting === undefined && parent.connecting !== undefined) child.connecting = parent.connecting;
+    if (!child.skin && parent.skin) child.skin = parent.skin;
+
+    // Merge arrays (concatenate)
+    if (parent.flags && parent.flags.length > 0) {
+      if (!child.flags) child.flags = [];
+      // Add parent flags that aren't already in child
+      const childFlagSet = new Set(child.flags);
+      for (const flag of parent.flags) {
+        if (!childFlagSet.has(flag)) {
+          child.flags.push(flag);
+        }
+      }
+    }
+
+    if (parent.overlay_layers && parent.overlay_layers.length > 0) {
+      if (!child.overlay_layers) child.overlay_layers = [];
+      // Add parent layers that aren't already in child
+      const childLayerSet = new Set(child.overlay_layers);
+      for (const layer of parent.overlay_layers) {
+        if (!childLayerSet.has(layer)) {
+          child.overlay_layers.push(layer);
+        }
+      }
+    }
+
+    // Merge optional reference fields
+    if (!child.open && parent.open) child.open = parent.open;
+    if (!child.close && parent.close) child.close = parent.close;
+    if (!child.bash && parent.bash) child.bash = parent.bash;
+    if (!child.deconstruct && parent.deconstruct) child.deconstruct = parent.deconstruct;
+    if (!child.workbench && parent.workbench) child.workbench = parent.workbench;
+    if (!child.plant && parent.plant) child.plant = parent.plant;
+    if (!child.emitters && parent.emitters) child.emitters = parent.emitters;
+  }
+
+  /**
+   * Parse with inheritance resolution
+   */
+  parseWithInheritance(obj: FurnitureJson): Furniture {
+    const resolved = this.resolveInheritance(obj);
+    return this.parse(resolved);
   }
 }

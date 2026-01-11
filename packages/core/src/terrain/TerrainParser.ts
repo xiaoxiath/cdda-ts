@@ -78,15 +78,13 @@ export interface DeconstructJson {
  * 地形 JSON 解析器
  */
 export class TerrainParser {
+  // Store all raw JSON objects (including abstract) for inheritance resolution
+  private rawDefinitions: Map<string, TerrainJson> = new Map();
+
   /**
    * 解析地形对象
    */
   parse(obj: TerrainJson): Terrain {
-    // Skip abstract terrain definitions (templates)
-    if ((obj as any).abstract) {
-      throw new Error('Abstract terrain definition (template), skipping');
-    }
-
     // Validate that we have a valid ID
     if (!obj.id || typeof obj.id !== 'string') {
       throw new Error('Invalid terrain object: missing or invalid id');
@@ -207,5 +205,97 @@ export class TerrainParser {
       reduceDamageLaser: obj.reduce_damage_laser,
       destroyDamage: obj.destroy_damage,
     };
+  }
+
+  /**
+   * Store raw terrain definitions (including abstract ones) for inheritance
+   */
+  storeRawDefinitions(jsonArray: TerrainJson[]): void {
+    for (const obj of jsonArray) {
+      // Get identifier - could be 'id' or 'abstract'
+      const identifier = obj.id || (obj as any).abstract;
+      if (identifier) {
+        this.rawDefinitions.set(identifier, obj);
+      }
+    }
+  }
+
+  /**
+   * Clear stored raw definitions
+   */
+  clearRawDefinitions(): void {
+    this.rawDefinitions.clear();
+  }
+
+  /**
+   * Resolve copy-from inheritance for a terrain JSON object
+   */
+  resolveInheritance(obj: TerrainJson): TerrainJson {
+    const result: TerrainJson = { ...obj };
+
+    // Handle copy_from field (supports both 'copy-from' and 'copy_from')
+    const copyFrom = (obj as any)['copy-from'] || obj.copy_from;
+    if (copyFrom) {
+      const parent = this.rawDefinitions.get(copyFrom);
+      if (parent) {
+        // Recursively resolve parent's inheritance first
+        const resolvedParent = this.resolveInheritance(parent);
+        // Merge parent properties into result (child overrides parent)
+        this.mergeProperties(result, resolvedParent);
+      } else {
+        console.warn(`Warning: copy-from parent '${copyFrom}' not found for terrain '${obj.id}'`);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Merge parent properties into child object (child takes precedence)
+   */
+  private mergeProperties(child: TerrainJson, parent: TerrainJson): void {
+    // Merge simple properties (only if child doesn't have them)
+    if (!child.name && parent.name) child.name = parent.name;
+    if (!child.description && parent.description) child.description = parent.description;
+    if (!child.symbol && parent.symbol) child.symbol = parent.symbol;
+    if (!child.color && parent.color) child.color = parent.color;
+    if (child.move_cost === undefined && parent.move_cost !== undefined) child.move_cost = parent.move_cost;
+    if (child.coverage === undefined && parent.coverage !== undefined) child.coverage = parent.coverage;
+
+    // Merge arrays (concatenate)
+    if (parent.flags && parent.flags.length > 0) {
+      if (!child.flags) child.flags = [];
+      // Add parent flags that aren't already in child
+      const childFlagSet = new Set(child.flags);
+      for (const flag of parent.flags) {
+        if (!childFlagSet.has(flag)) {
+          child.flags.push(flag);
+        }
+      }
+    }
+
+    // Merge optional reference fields
+    if (!child.open && parent.open) child.open = parent.open;
+    if (!child.close && parent.close) child.close = parent.close;
+    if (!child.bash && parent.bash) child.bash = parent.bash;
+    if (!child.deconstruct && parent.deconstruct) child.deconstruct = parent.deconstruct;
+    if (!child.lockpick_result && parent.lockpick_result) child.lockpick_result = parent.lockpick_result;
+    if (!child.transforms_into && parent.transforms_into) child.transforms_into = parent.transforms_into;
+    if (!child.roof && parent.roof) child.roof = parent.roof;
+    if (!child.trap && parent.trap) child.trap = parent.trap;
+    if (!child.connect_groups && parent.connect_groups) child.connect_groups = parent.connect_groups;
+    if (!child.connects_to && parent.connects_to) child.connects_to = parent.connects_to;
+    if (!child.looks_like && parent.looks_like) child.looks_like = parent.looks_like;
+    if (child.light_emitted === undefined && parent.light_emitted !== undefined) child.light_emitted = parent.light_emitted;
+    if (!child.shoot && parent.shoot) child.shoot = parent.shoot;
+    if (child.comfort === undefined && parent.comfort !== undefined) child.comfort = parent.comfort;
+  }
+
+  /**
+   * Parse with inheritance resolution
+   */
+  parseWithInheritance(obj: TerrainJson): Terrain {
+    const resolved = this.resolveInheritance(obj);
+    return this.parse(resolved);
   }
 }

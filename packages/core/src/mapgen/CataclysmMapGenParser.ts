@@ -99,6 +99,9 @@ export interface PaletteData {
   /** 嵌套定义 */
   nested?: Record<string, NestedMapConfig>;
 
+  /** 嵌套调色板引用（支持参数化引用） */
+  palettes?: PaletteReference[];
+
   /** 参数定义 */
   parameters?: Record<string, unknown>;
 
@@ -222,6 +225,12 @@ export interface CataclysmMapGenJson {
 }
 
 /**
+ * 调色板引用类型
+ * 可以是字符串 ID 或参数引用对象
+ */
+export type PaletteReference = string | { param: string };
+
+/**
  * 解析后的 Mapgen 数据
  */
 export interface ParsedMapGenData {
@@ -234,8 +243,8 @@ export interface ParsedMapGenData {
   /** 嵌套地图生成 ID */
   nestedId?: string;
 
-  /** 调色板引用列表 */
-  palettes?: string[];
+  /** 调色板引用列表（支持参数化引用） */
+  palettes?: PaletteReference[];
 
   /** 权重 */
   weight?: number;
@@ -597,6 +606,7 @@ export class CataclysmMapGenLoader {
       furniture: Object.fromEntries(furniture) as Record<string, FurnitureMapping>,
       items: Object.fromEntries(items),
       nested: Object.fromEntries(nested),
+      palettes: paletteData.palettes as PaletteReference[] | undefined,
       parameters: paletteData.parameters as Record<string, unknown> | undefined,
       raw: paletteData as MapGenObjectConfig,
     };

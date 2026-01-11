@@ -18,20 +18,32 @@ export class TerrainLoader {
   /**
    * 从 JSON 数组加载地形
    */
-  async loadFromJson(json: TerrainJson[]): Promise<TerrainData> {
+  async loadFromJson(json: TerrainJson[], clearDefinitions = false): Promise<TerrainData> {
+    // Clear raw definitions if requested (for fresh loads)
+    if (clearDefinitions) {
+      this.parser.clearRawDefinitions();
+    }
+
+    // First pass: store all raw definitions (including abstract ones) for inheritance
+    this.parser.storeRawDefinitions(json);
+
     const terrains: Terrain[] = [];
 
+    // Second pass: resolve inheritance and parse only concrete terrains
     for (const obj of json) {
       try {
         if (obj.type === 'terrain') {
-          const terrain = this.parser.parse(obj as TerrainJson);
+          // Skip abstract definitions (templates that don't have an 'id')
+          const isAbstract = (obj as any).abstract && !obj.id;
+          if (isAbstract) {
+            continue;
+          }
+
+          // Parse with inheritance resolution
+          const terrain = this.parser.parseWithInheritance(obj as TerrainJson);
           terrains.push(terrain);
         }
       } catch (error) {
-        // Silently skip abstract terrain definitions (templates)
-        if ((error as Error).message?.includes('Abstract terrain definition')) {
-          continue;
-        }
         console.error(`Failed to parse terrain: ${obj.id}`, error);
       }
     }
@@ -45,20 +57,23 @@ export class TerrainLoader {
   /**
    * 从 URL 加载地形数据
    */
-  async loadFromUrl(url: string): Promise<TerrainData> {
+  async loadFromUrl(url: string, clearDefinitions = false): Promise<TerrainData> {
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load terrain from ${url}: ${response.statusText}`);
     }
 
     const json = (await response.json()) as TerrainJson[];
-    return this.loadFromJson(json);
+    return this.loadFromJson(json, clearDefinitions);
   }
 
   /**
    * 从多个 URL 加载地形数据
    */
   async loadFromUrls(urls: string[]): Promise<TerrainData> {
+    // Clear any previous raw definitions before starting fresh
+    this.parser.clearRawDefinitions();
+
     const allTerrains: Terrain[] = [];
 
     for (const url of urls) {
@@ -72,16 +87,22 @@ export class TerrainLoader {
         const json = await response.json();
         const terrainArray = Array.isArray(json) ? json : [json];
 
+        // Store raw definitions for inheritance
+        this.parser.storeRawDefinitions(terrainArray);
+
+        // Parse with inheritance resolution
         for (const obj of terrainArray) {
           if (obj.type === 'terrain') {
             try {
-              const terrain = this.parser.parse(obj as TerrainJson);
-              allTerrains.push(terrain);
-            } catch (error) {
-              // Silently skip abstract terrain definitions (templates)
-              if ((error as Error).message?.includes('Abstract terrain definition')) {
+              // Skip abstract definitions (templates that don't have an 'id')
+              const isAbstract = (obj as any).abstract && !obj.id;
+              if (isAbstract) {
                 continue;
               }
+
+              const terrain = this.parser.parseWithInheritance(obj as TerrainJson);
+              allTerrains.push(terrain);
+            } catch (error) {
               console.error(`Failed to parse terrain from ${url}:`, error);
             }
           }
@@ -135,6 +156,7 @@ export class TerrainLoader {
    */
   clear(): void {
     this.data.clear();
+    this.parser.clearRawDefinitions();
   }
 
   /**

@@ -18,13 +18,29 @@ export class FurnitureLoader {
   /**
    * 从 JSON 数组加载家具
    */
-  async loadFromJson(json: FurnitureJson[]): Promise<FurnitureData> {
+  async loadFromJson(json: FurnitureJson[], clearDefinitions = false): Promise<FurnitureData> {
+    // Clear raw definitions if requested (for fresh loads)
+    if (clearDefinitions) {
+      this.parser.clearRawDefinitions();
+    }
+
+    // First pass: store all raw definitions (including abstract ones) for inheritance
+    this.parser.storeRawDefinitions(json);
+
     const furnitures: Furniture[] = [];
 
+    // Second pass: resolve inheritance and parse only concrete furniture
     for (const obj of json) {
       try {
         if (obj.type === 'furniture' || obj.type === 'furniture_nested') {
-          const furniture = this.parser.parse(obj as FurnitureJson);
+          // Skip abstract definitions (templates that don't have an 'id')
+          const isAbstract = (obj as any).abstract && !obj.id;
+          if (isAbstract) {
+            continue;
+          }
+
+          // Parse with inheritance resolution
+          const furniture = this.parser.parseWithInheritance(obj as FurnitureJson);
           furnitures.push(furniture);
         }
       } catch (error) {
@@ -40,20 +56,23 @@ export class FurnitureLoader {
   /**
    * 从 URL 加载家具数据
    */
-  async loadFromUrl(url: string): Promise<FurnitureData> {
+  async loadFromUrl(url: string, clearDefinitions = false): Promise<FurnitureData> {
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load furniture from ${url}: ${response.statusText}`);
     }
 
     const json = (await response.json()) as FurnitureJson[];
-    return this.loadFromJson(json);
+    return this.loadFromJson(json, clearDefinitions);
   }
 
   /**
    * 从多个 URL 加载家具数据
    */
   async loadFromUrls(urls: string[]): Promise<FurnitureData> {
+    // Clear any previous raw definitions before starting fresh
+    this.parser.clearRawDefinitions();
+
     const allFurnitures: Furniture[] = [];
 
     for ( const url of urls) {
@@ -67,10 +86,20 @@ export class FurnitureLoader {
         const json = await response.json();
         const furnitureArray = Array.isArray(json) ? json : [json];
 
+        // Store raw definitions for inheritance
+        this.parser.storeRawDefinitions(furnitureArray);
+
+        // Parse with inheritance resolution
         for (const obj of furnitureArray) {
           if (obj.type === 'furniture' || obj.type === 'furniture_nested') {
             try {
-              const furniture = this.parser.parse(obj as FurnitureJson);
+              // Skip abstract definitions (templates that don't have an 'id')
+              const isAbstract = (obj as any).abstract && !obj.id;
+              if (isAbstract) {
+                continue;
+              }
+
+              const furniture = this.parser.parseWithInheritance(obj as FurnitureJson);
               allFurnitures.push(furniture);
             } catch (error) {
               console.error(`Failed to parse furniture from ${url}:`, error);
@@ -126,6 +155,7 @@ export class FurnitureLoader {
    */
   clear(): void {
     this.data.clear();
+    this.parser.clearRawDefinitions();
   }
 
   /**

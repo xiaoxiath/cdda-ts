@@ -22,6 +22,7 @@ export interface TrapJson {
   flags?: string[];
   fun?: number;
   complexity?: number;
+  copy_from?: string;  // For inheritance
 }
 
 /**
@@ -29,6 +30,8 @@ export interface TrapJson {
  */
 export class TrapParser {
   private static readonly warnedActions: Set<string> = new Set();
+  // Store all raw JSON objects (including abstract) for inheritance resolution
+  private rawDefinitions: Map<string, TrapJson> = new Map();
 
   /**
    * 解析陷阱对象
@@ -84,5 +87,89 @@ export class TrapParser {
     }
 
     return TrapAction.NONE;
+  }
+
+  /**
+   * Store raw trap definitions (including abstract ones) for inheritance
+   */
+  storeRawDefinitions(jsonArray: TrapJson[]): void {
+    for (const obj of jsonArray) {
+      // Get identifier - could be 'id' or 'abstract'
+      const identifier = obj.id || (obj as any).abstract;
+      if (identifier) {
+        this.rawDefinitions.set(identifier, obj);
+      }
+    }
+  }
+
+  /**
+   * Clear stored raw definitions
+   */
+  clearRawDefinitions(): void {
+    this.rawDefinitions.clear();
+  }
+
+  /**
+   * Resolve copy-from inheritance for a trap JSON object
+   */
+  resolveInheritance(obj: TrapJson): TrapJson {
+    const result: TrapJson = { ...obj };
+
+    // Handle copy_from field (supports both 'copy-from' and 'copy_from')
+    const copyFrom = (obj as any)['copy-from'] || obj.copy_from;
+    if (copyFrom) {
+      const parent = this.rawDefinitions.get(copyFrom);
+      if (parent) {
+        // Recursively resolve parent's inheritance first
+        const resolvedParent = this.resolveInheritance(parent);
+        // Merge parent properties into result (child overrides parent)
+        this.mergeProperties(result, resolvedParent);
+      } else {
+        console.warn(`Warning: copy-from parent '${copyFrom}' not found for trap '${obj.id}'`);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Merge parent properties into child object (child takes precedence)
+   */
+  private mergeProperties(child: TrapJson, parent: TrapJson): void {
+    // Merge simple properties (only if child doesn't have them)
+    if (!child.name && parent.name) child.name = parent.name;
+    if (!child.description && parent.description) child.description = parent.description;
+    if (!child.symbol && parent.symbol) child.symbol = parent.symbol;
+    if (!child.color && parent.color) child.color = parent.color;
+    if (child.visibility === undefined && parent.visibility !== undefined) child.visibility = parent.visibility;
+    if (child.avoidance === undefined && parent.avoidance !== undefined) child.avoidance = parent.avoidance;
+    if (child.difficulty === undefined && parent.difficulty !== undefined) child.difficulty = parent.difficulty;
+    if (child.trap_radius === undefined && parent.trap_radius !== undefined) child.trap_radius = parent.trap_radius;
+    if (child.benign === undefined && parent.benign !== undefined) child.benign = parent.benign;
+    if (child.always_invisible === undefined && parent.always_invisible !== undefined) child.always_invisible = parent.always_invisible;
+    if (child.trigger_weight === undefined && parent.trigger_weight !== undefined) child.trigger_weight = parent.trigger_weight;
+    if (!child.action && parent.action) child.action = parent.action;
+    if (child.fun === undefined && parent.fun !== undefined) child.fun = parent.fun;
+    if (child.complexity === undefined && parent.complexity !== undefined) child.complexity = parent.complexity;
+
+    // Merge arrays (concatenate)
+    if (parent.flags && parent.flags.length > 0) {
+      if (!child.flags) child.flags = [];
+      // Add parent flags that aren't already in child
+      const childFlagSet = new Set(child.flags);
+      for (const flag of parent.flags) {
+        if (!childFlagSet.has(flag)) {
+          child.flags.push(flag);
+        }
+      }
+    }
+  }
+
+  /**
+   * Parse with inheritance resolution
+   */
+  parseWithInheritance(obj: TrapJson): Trap {
+    const resolved = this.resolveInheritance(obj);
+    return this.parse(resolved);
   }
 }

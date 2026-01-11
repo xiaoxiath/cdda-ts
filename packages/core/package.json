@@ -16,6 +16,11 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "example": "tsx src/simple-game-example.ts",
+    "cli:terrain": "tsx src/cli/TerrainCLI.ts",
+    "cli:furniture": "tsx src/cli/FurnitureCLI.ts",
+    "cli:trap": "tsx src/cli/TrapCLI.ts",
+    "cli:creature": "tsx src/cli/CreatureCLI.ts",
+    "cli:npc": "tsx src/cli/NPCCLI.ts",
     "mapgen-tool": "tsx src/cli/MapGenCLI.ts"
   },
   "dependencies": {

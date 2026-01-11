@@ -18,13 +18,29 @@ export class TrapLoader {
   /**
    * 从 JSON 数组加载陷阱
    */
-  async loadFromJson(json: TrapJson[]): Promise<TrapData> {
+  async loadFromJson(json: TrapJson[], clearDefinitions = false): Promise<TrapData> {
+    // Clear raw definitions if requested (for fresh loads)
+    if (clearDefinitions) {
+      this.parser.clearRawDefinitions();
+    }
+
+    // First pass: store all raw definitions (including abstract ones) for inheritance
+    this.parser.storeRawDefinitions(json);
+
     const traps: Trap[] = [];
 
+    // Second pass: resolve inheritance and parse only concrete traps
     for (const obj of json) {
       try {
         if (obj.type === 'trap') {
-          const trap = this.parser.parse(obj as TrapJson);
+          // Skip abstract definitions (templates that don't have an 'id')
+          const isAbstract = (obj as any).abstract && !obj.id;
+          if (isAbstract) {
+            continue;
+          }
+
+          // Parse with inheritance resolution
+          const trap = this.parser.parseWithInheritance(obj as TrapJson);
           traps.push(trap);
         }
       } catch (error) {
@@ -40,20 +56,23 @@ export class TrapLoader {
   /**
    * 从 URL 加载陷阱数据
    */
-  async loadFromUrl(url: string): Promise<TrapData> {
+  async loadFromUrl(url: string, clearDefinitions = false): Promise<TrapData> {
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load traps from ${url}: ${response.statusText}`);
     }
 
     const json = (await response.json()) as TrapJson[];
-    return this.loadFromJson(json);
+    return this.loadFromJson(json, clearDefinitions);
   }
 
   /**
    * 从多个 URL 加载陷阱数据
    */
   async loadFromUrls(urls: string[]): Promise<TrapData> {
+    // Clear any previous raw definitions before starting fresh
+    this.parser.clearRawDefinitions();
+
     const allTraps: Trap[] = [];
 
     for (const url of urls) {
@@ -67,10 +86,20 @@ export class TrapLoader {
         const json = await response.json();
         const trapArray = Array.isArray(json) ? json : [json];
 
+        // Store raw definitions for inheritance
+        this.parser.storeRawDefinitions(trapArray);
+
+        // Parse with inheritance resolution
         for (const obj of trapArray) {
           if (obj.type === 'trap') {
             try {
-              const trap = this.parser.parse(obj as TrapJson);
+              // Skip abstract definitions (templates that don't have an 'id')
+              const isAbstract = (obj as any).abstract && !obj.id;
+              if (isAbstract) {
+                continue;
+              }
+
+              const trap = this.parser.parseWithInheritance(obj as TrapJson);
               allTraps.push(trap);
             } catch (error) {
               console.error(`Failed to parse trap from ${url}:`, error);
@@ -119,6 +148,7 @@ export class TrapLoader {
    */
   clear(): void {
     this.data.clear();
+    this.parser.clearRawDefinitions();
   }
 
   /**

@@ -24,7 +24,8 @@
       "Bash(find:*)",
       "Bash(done)",
       "Bash(tsx:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(cat:*)"
     ]
   }
 }

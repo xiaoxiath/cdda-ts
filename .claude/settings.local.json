@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm lint:*)",
+      "Bash(npx eslint:*)",
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(chmod:*)",
+      "Bash(source ~/.zshrc)",
+      "Bash(source ~/.bashrc)",
+      "Bash(bash check-tests.sh:*)",
+      "Bash(pkill:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npx vitest run:*)",
+      "Bash(~/.claude/skills/browser/scripts/start.cjs --profile)",
+      "Bash(ls:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && head -50 {}')",
+      "Bash(find:*)",
+      "Bash(done)",
+      "Bash(tsx:*)",
+      "Bash(npx tsx:*)"
+    ]
+  }
+}

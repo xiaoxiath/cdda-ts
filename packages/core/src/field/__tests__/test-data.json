@@ -1,0 +1,295 @@
+[
+  {
+    "type": "field_type",
+    "id": "fd_blood",
+    "name": "blood",
+    "intensity_levels": [
+      { "name": "blood splatter", "color": "red", "symbol": "." },
+      { "name": "blood stain", "color": "red", "symbol": "," },
+      { "name": "puddle of blood", "color": "red", "symbol": ":" }
+    ],
+    "half_life": "2 days",
+    "phase": "liquid",
+    "accelerated_decay": true,
+    "display_field": true,
+    "flags": ["BLOODY"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_blood_veggy",
+    "name": "vegetable sap",
+    "intensity_levels": [
+      { "name": "sap splatter", "color": "green", "symbol": "." },
+      { "name": "sap stain", "color": "green", "symbol": "," },
+      { "name": "puddle of sap", "color": "green", "symbol": ":" }
+    ],
+    "half_life": "2 days",
+    "phase": "liquid",
+    "accelerated_decay": true,
+    "display_field": true
+  },
+  {
+    "type": "field_type",
+    "id": "fd_blood_invertebrate",
+    "name": "hemolymph",
+    "intensity_levels": [
+      { "name": "hemolymph splatter", "color": "light_green", "symbol": "." },
+      { "name": "hemolymph stain", "color": "light_green", "symbol": "," },
+      { "name": "puddle of hemolymph", "color": "light_green", "symbol": ":" }
+    ],
+    "half_life": "2 days",
+    "phase": "liquid",
+    "accelerated_decay": true,
+    "display_field": true
+  },
+  {
+    "type": "field_type",
+    "id": "fd_blood_iv",
+    "name": "iv bag",
+    "intensity_levels": [
+      { "name": "iv bag", "color": "pink", "symbol": "7" }
+    ],
+    "half_life": "7 days",
+    "phase": "liquid",
+    "accelerated_decay": true,
+    "display_field": true
+  },
+  {
+    "type": "field_type",
+    "id": "fd_gibs",
+    "name": "gibs",
+    "intensity_levels": [
+      { "name": "gibs", "color": "red", "symbol": "&" },
+      { "name": "gibs", "color": "red", "symbol": "&" },
+      { "name": "gibs", "color": "red", "symbol": "&" }
+    ],
+    "half_life": "3 days",
+    "phase": "solid",
+    "accelerated_decay": false,
+    "display_field": true
+  },
+  {
+    "type": "field_type",
+    "id": "fd_gibs_flesh",
+    "name": "chunky flesh",
+    "intensity_levels": [
+      { "name": "flesh", "color": "red", "symbol": "&" }
+    ],
+    "half_life": "3 days",
+    "phase": "solid",
+    "accelerated_decay": false,
+    "display_field": true
+  },
+  {
+    "type": "field_type",
+    "id": "fd_fire",
+    "name": "fire",
+    "intensity_levels": [
+      { "name": "flames", "color": "red", "symbol": "^" },
+      { "name": "flames", "color": "red", "symbol": "^" },
+      { "name": "flames", "color": "red", "symbol": "^" }
+    ],
+    "half_life": "1 turns",
+    "phase": "plasma",
+    "accelerated_decay": true,
+    "display_field": true,
+    "display_priority": 10,
+    "danger_level": 3,
+    "fire_spread_chance": 10,
+    "fire_ignition_chance": 20,
+    "light_emitted": 3,
+    "flags": ["FIRE", "HOT", "DANGEROUS"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_smoke",
+    "name": "smoke",
+    "intensity_levels": [
+      { "name": "thin smoke", "color": "gray", "symbol": ":" },
+      { "name": "smoke", "color": "gray", "symbol": ":" },
+      { "name": "thick smoke", "color": "dark_gray", "symbol": ":" }
+    ],
+    "half_life": "30 turns",
+    "phase": "gas",
+    "accelerated_decay": true,
+    "display_field": true,
+    "display_priority": 5,
+    "flags": ["SMOKE", "TRANSPARENT"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_toxic_cloud",
+    "name": "toxic cloud",
+    "intensity_levels": [
+      { "name": "thin toxic cloud", "color": "green", "symbol": ":" },
+      { "name": "toxic cloud", "color": "green", "symbol": ":" },
+      { "name": "thick toxic cloud", "color": "light_green", "symbol": ":" }
+    ],
+    "half_life": "20 turns",
+    "phase": "gas",
+    "accelerated_decay": true,
+    "display_field": true,
+    "display_priority": 8,
+    "danger_level": 2,
+    "flags": ["TOXIC", "POISON", "DANGEROUS"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_acid",
+    "name": "acid",
+    "intensity_levels": [
+      { "name": "splatter of acid", "color": "light_green", "symbol": "~" },
+      { "name": "puddle of acid", "color": "light_green", "symbol": "~" },
+      { "name": "pool of acid", "color": "light_green", "symbol": "~" }
+    ],
+    "half_life": "50 turns",
+    "phase": "liquid",
+    "accelerated_decay": true,
+    "display_field": true,
+    "display_priority": 7,
+    "danger_level": 3,
+    "flags": ["ACID", "CORROSIVE", "DANGEROUS"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_web",
+    "name": "web",
+    "intensity_levels": [
+      { "name": "cobweb", "color": "white", "symbol": "," },
+      { "name": "web", "color": "white", "symbol": "\"" },
+      { "name": "thick web", "color": "white", "symbol": "#" }
+    ],
+    "half_life": "1 days",
+    "phase": "solid",
+    "accelerated_decay": false,
+    "display_field": true,
+    "display_priority": 3,
+    "flags": ["WEB", "STICKY", "SNARE"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_slime",
+    "name": "slime",
+    "intensity_levels": [
+      { "name": "slime streak", "color": "light_green", "symbol": ":" },
+      { "name": "slime", "color": "light_green", "symbol": ":" },
+      { "name": "slime puddle", "color": "light_green", "symbol": "~" }
+    ],
+    "half_life": "1 days",
+    "phase": "liquid",
+    "accelerated_decay": true,
+    "display_field": true,
+    "flags": ["SLUDGE", "STICKY"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_water",
+    "name": "shallow water",
+    "intensity_levels": [
+      { "name": "shallow water", "color": "blue", "symbol": "~" },
+      { "name": "shallow water", "color": "blue", "symbol": "~" },
+      { "name": "shallow water", "color": "blue", "symbol": "~" }
+    ],
+    "half_life": "1000 turns",
+    "phase": "liquid",
+    "accelerated_decay": false,
+    "display_field": false
+  },
+  {
+    "type": "field_type",
+    "id": "fd_rubble",
+    "name": "rubble",
+    "intensity_levels": [
+      { "name": "rubble", "color": "light_gray", "symbol": ":" },
+      { "name": "rubble", "color": "light_gray", "symbol": ":" },
+      { "name": "rubble", "color": "light_gray", "symbol": ":" }
+    ],
+    "half_life": "1000 turns",
+    "phase": "solid",
+    "accelerated_decay": false,
+    "display_field": true,
+    "flags": ["TRANSPARENT"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_sewage",
+    "name": "sewage",
+    "intensity_levels": [
+      { "name": "sewage spill", "color": "brown", "symbol": "~" },
+      { "name": "sewage", "color": "brown", "symbol": "~" },
+      { "name": "sewage pool", "color": "brown", "symbol": "~" }
+    ],
+    "half_life": "3 days",
+    "phase": "liquid",
+    "accelerated_decay": true,
+    "display_field": true,
+    "danger_level": 1,
+    "flags": ["TOXIC", "DANGEROUS"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_electricity",
+    "name": "electricity",
+    "intensity_levels": [
+      { "name": "sparks", "color": "yellow", "symbol": "\"" },
+      { "name": "electric arc", "color": "yellow", "symbol": "\"" },
+      { "name": "lightning", "color": "yellow", "symbol": "^" }
+    ],
+    "half_life": "1 turns",
+    "phase": "energy",
+    "accelerated_decay": true,
+    "display_field": true,
+    "display_priority": 9,
+    "danger_level": 3,
+    "light_emitted": 5,
+    "flags": ["CONDUCTIVE", "DANGEROUS"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_fume_gas",
+    "name": "fumes",
+    "intensity_levels": [
+      { "name": "light fumes", "color": "dark_gray", "symbol": ":" },
+      { "name": "fumes", "color": "dark_gray", "symbol": ":" },
+      { "name": "heavy fumes", "color": "black", "symbol": ":" }
+    ],
+    "half_life": "10 minutes",
+    "phase": "gas",
+    "accelerated_decay": true,
+    "display_field": true,
+    "display_priority": 6,
+    "danger_level": 2,
+    "flags": ["FUME", "TOXIC", "DANGEROUS"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_relax_gas",
+    "name": "relaxation gas",
+    "intensity_levels": [
+      { "name": "relaxing vapors", "color": "light_blue", "symbol": ":" },
+      { "name": "relaxing cloud", "color": "light_blue", "symbol": ":" },
+      { "name": "relaxation field", "color": "light_blue", "symbol": ":" }
+    ],
+    "half_life": "5 minutes",
+    "phase": "gas",
+    "accelerated_decay": true,
+    "display_field": true,
+    "flags": ["TRANSPARENT"]
+  },
+  {
+    "type": "field_type",
+    "id": "fd_hot_air",
+    "name": "hot air",
+    "intensity_levels": [
+      { "name": "warm breeze", "color": "light_red", "symbol": ":" },
+      { "name": "hot air", "color": "red", "symbol": ":" },
+      { "name": "heat wave", "color": "red", "symbol": ":" }
+    ],
+    "half_life": "1 minutes",
+    "phase": "gas",
+    "accelerated_decay": true,
+    "display_field": true,
+    "danger_level": 1,
+    "flags": ["HEAT", "DANGEROUS"]
+  }
+]

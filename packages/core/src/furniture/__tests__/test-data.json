@@ -1,0 +1,336 @@
+[
+  {
+    "type": "furniture",
+    "id": "f_chair",
+    "name": "chair",
+    "description": "A simple wooden chair.",
+    "symbol": "_",
+    "color": "brown",
+    "move_cost_mod": 1,
+    "coverage": 10,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC"],
+    "comfort": 1,
+    "required_str": 8,
+    "bash": {
+      "str_min": 2,
+      "str_max": 4,
+      "sound": "crash",
+      "items": [
+        { "item": "2x4", "count": [1, 2] },
+        { "item": "splinter", "count": [1, 3] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_table",
+    "name": "table",
+    "description": "A wooden table.",
+    "symbol": "t",
+    "color": "brown",
+    "move_cost_mod": 1,
+    "coverage": 40,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC", "FLAT"],
+    "required_str": 15,
+    "max_volume": 50,
+    "bash": {
+      "str_min": 4,
+      "str_max": 8,
+      "sound": "crash",
+      "items": [
+        { "item": "2x4", "count": [2, 4] },
+        { "item": "nail", "count": [4, 12] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_bed",
+    "name": "bed",
+    "description": "A comfortable bed.",
+    "symbol": "=",
+    "color": "cyan",
+    "move_cost_mod": 1,
+    "coverage": 80,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC", "FLAT", "MOUNTABLE"],
+    "comfort": 10,
+    "floor_bedding_warmth": -3000,
+    "required_str": 20,
+    "max_volume": 1000,
+    "bash": {
+      "str_min": 10,
+      "str_max": 30,
+      "sound": "crash",
+      "items": [
+        { "item": "2x4", "count": [4, 8] },
+        { "item": "nail", "count": [8, 24] },
+        { "item": "rag", "count": [2, 6] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_workbench",
+    "name": "workbench",
+    "description": "A sturdy workbench for crafting.",
+    "symbol": "W",
+    "color": "blue",
+    "move_cost_mod": 1,
+    "coverage": 50,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC", "WORKBENCH", "FLAT"],
+    "required_str": 25,
+    "mass": 40000,
+    "workbench": {
+      "items": {
+        "all": 1,
+        "electronics": 2
+      },
+      "multipliers": {
+        "electronics": 2
+      },
+      "tile": true,
+      "mass": 40000,
+      "volume": 300000
+    },
+    "bash": {
+      "str_min": 20,
+      "str_max": 50,
+      "sound": "crash",
+      "items": [
+        { "item": "2x4", "count": [8, 16] },
+        { "item": "nail", "count": [20, 40] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_wooden_support",
+    "name": "wooden support",
+    "description": "A wooden support beam.",
+    "symbol": "7",
+    "color": "brown",
+    "move_cost_mod": 1,
+    "coverage": 5,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC"],
+    "required_str": 10,
+    "deconstruct": {
+      "items": [
+        { "item": "2x4", "count": [2, 3] },
+        { "item": "nail", "count": [4, 12] }
+      ],
+      "time": 50
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_rack",
+    "name": "rack",
+    "description": "A storage rack.",
+    "symbol": "r",
+    "color": "brown",
+    "move_cost_mod": 1,
+    "coverage": 30,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC"],
+    "required_str": 10,
+    "max_volume": 1000,
+    "bash": {
+      "str_min": 5,
+      "str_max": 10,
+      "sound": "crash",
+      "items": [
+        { "item": "2x4", "count": [2, 4] },
+        { "item": "nail", "count": [4, 8] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_door_frame",
+    "name": "door frame",
+    "description": "A wooden door frame.",
+    "symbol": "_",
+    "color": "brown",
+    "move_cost_mod": 1,
+    "coverage": 5,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC", "BLOCKSDOOR"],
+    "required_str": 8,
+    "deconstruct": {
+      "items": [
+        { "item": "2x4", "count": [1, 2] },
+        { "item": "nail", "count": [2, 6] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_crate",
+    "name": "crate",
+    "description": "A wooden storage crate.",
+    "symbol": "c",
+    "color": "brown",
+    "move_cost_mod": 2,
+    "coverage": 100,
+    "flags": ["FLAMMABLE_ASH", "ORGANIC", "CONTAINER"],
+    "required_str": 15,
+    "mass": 15000,
+    "max_volume": 60000,
+    "bash": {
+      "str_min": 8,
+      "str_max": 20,
+      "sound": "smash",
+      "items": [
+        { "item": "2x4", "count": [4, 8] },
+        { "item": "nail", "count": [8, 24] }
+      ]
+    },
+    "deconstruct": {
+      "items": [
+        { "item": "2x4", "count": [4, 8] },
+        { "item": "nail", "count": [8, 24] }
+      ],
+      "time": 30
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_ash",
+    "name": "ash",
+    "description": "A pile of ash.",
+    "symbol": ".",
+    "color": "light_gray",
+    "move_cost_mod": 1,
+    "coverage": 5,
+    "flags": ["TRANSPARENT", "FLAT"],
+    "comfort": -2,
+    "bash": {
+      "str_min": 0,
+      "str_max": 0,
+      "sound": "swish",
+      "destroy_only": true
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_sapling",
+    "name": "sapling",
+    "description": "A young tree sapling.",
+    "symbol": "♠",
+    "color": "green",
+    "move_cost_mod": 2,
+    "coverage": 10,
+    "flags": ["TRANSPARENT", "FLAMMABLE", "ORGANIC", "PLANT"],
+    "comfort": -1,
+    "bash": {
+      "str_min": 2,
+      "str_max": 5,
+      "sound": "snap",
+      "items": [
+        { "item": "stick", "count": [1, 2] },
+        { "item": "withered_leaves", "count": [1, 2] }
+      ]
+    },
+    "plant": {
+      "transform_age": 100800,
+      "transforms_into_furniture": "f_plant_harvest",
+      "transforms_into_item": "f_sapling",
+      "fruit_count": 0,
+      "fruit_div": 1,
+      "fruit_type": "null",
+      "byproducts": [],
+      "grow": 600,
+      "harvest": 10,
+      "harvest_season": ["summer", "autumn"]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_plant_harvest",
+    "name": "plant",
+    "description": "A growing plant.",
+    "symbol": "♠",
+    "color": "green",
+    "move_cost_mod": 2,
+    "coverage": 20,
+    "flags": ["TRANSPARENT", "FLAMMABLE", "ORGANIC", "PLANT"],
+    "comfort": -1,
+    "bash": {
+      "str_min": 5,
+      "str_max": 10,
+      "sound": "crunch",
+      "items": [
+        { "item": "stick", "count": [2, 4] },
+        { "item": "withered_leaves", "count": [1, 3] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_oven",
+    "name": "oven",
+    "description": "A kitchen oven.",
+    "symbol": "U",
+    "color": "gray",
+    "move_cost_mod": 1,
+    "coverage": 50,
+    "flags": ["TRANSPARENT", "FLAMMABLE", "WORKBENCH"],
+    "required_str": 30,
+    "mass": 50000,
+    "emitted_light": 3,
+    "emitters": {
+      "fd_fire": {
+        "field": "fd_fire",
+        "density": 1,
+        "chance": 20
+      }
+    },
+    "workbench": {
+      "items": {
+        "COOK": 3,
+        "all": -2
+      }
+    },
+    "bash": {
+      "str_min": 30,
+      "str_max": 60,
+      "sound": "clang",
+      "items": [
+        { "item": "steel_chunk", "count": [2, 4] }
+      ]
+    }
+  },
+  {
+    "type": "furniture",
+    "id": "f_lamp",
+    "name": "lamp",
+    "description": "An electric lamp.",
+    "symbol": "5",
+    "color": "yellow",
+    "move_cost_mod": 1,
+    "coverage": 5,
+    "flags": ["TRANSPARENT", "OPERABLE"],
+    "required_str": 5,
+    "emitted_light": 5,
+    "mass": 500
+  },
+  {
+    "type": "furniture",
+    "id": "f_sign",
+    "name": "sign",
+    "description": "A sign for marking locations.",
+    "symbol": "7",
+    "color": "brown",
+    "move_cost_mod": 1,
+    "coverage": 10,
+    "flags": ["TRANSPARENT", "FLAMMABLE_ASH", "ORGANIC", "FLAT"],
+    "required_str": 10,
+    "max_volume": 5,
+    "bash": {
+      "str_min": 5,
+      "str_max": 10,
+      "sound": "crash",
+      "items": [
+        { "item": "2x4", "count": [1, 2] }
+      ]
+    }
+  }
+]

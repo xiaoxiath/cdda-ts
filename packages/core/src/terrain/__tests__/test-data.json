@@ -1,0 +1,189 @@
+[
+  {
+    "type": "terrain",
+    "id": "t_dirt",
+    "name": "dirt",
+    "description": "It's dirt. Nothing special.",
+    "symbol": ".",
+    "color": "brown",
+    "move_cost": 2,
+    "flags": ["TRANSPARENT", "DIGGABLE", "FLAT"],
+    "bash": {
+      "sound": "thump",
+      "ter_set": "t_null",
+      "str_min": 50,
+      "str_max": 100
+    },
+    "connect_groups": "DIRT",
+    "connects_to": ["DIRT", "CLAY", "SAND", "MUD"]
+  },
+  {
+    "type": "terrain",
+    "id": "t_grass",
+    "name": "grass",
+    "description": "A patch of grass.",
+    "symbol": "\"",
+    "color": "green",
+    "move_cost": 2,
+    "flags": ["TRANSPARENT", "DIGGABLE", "FLAT", "FLAMMABLE"],
+    "connect_groups": "GRASS",
+    "connects_to": ["GRASS"]
+  },
+  {
+    "type": "terrain",
+    "id": "t_floor",
+    "name": "floor",
+    "description": "A wooden floor.",
+    "symbol": ".",
+    "color": "brown",
+    "move_cost": 1,
+    "flags": ["TRANSPARENT", "FLAT", "INDOORS"],
+    "deconstruct": {
+      "furniture": "f_wooden_support",
+      "time": 100,
+      "items": [
+        { "item": "nail", "count": [4, 8] },
+        { "item": "2x4", "count": [1, 2] }
+      ]
+    }
+  },
+  {
+    "type": "terrain",
+    "id": "t_wall_wood",
+    "name": "wooden wall",
+    "description": "A wall made of wooden planks.",
+    "symbol": "#",
+    "color": "brown",
+    "move_cost": 0,
+    "flags": ["WALL", "FLAMMABLE"],
+    "bash": {
+      "sound": "crash",
+      "str_min": 20,
+      "str_max": 40,
+      "furniture": ["f_wooden_support"],
+      "items": [
+        { "item": "2x4", "count": [2, 4] },
+        { "item": "splinter", "count": [1, 6] }
+      ],
+      "ter_set": "t_dirt"
+    },
+    "deconstruct": {
+      "furniture": "f_wooden_support",
+      "time": 50,
+      "items": [
+        { "item": "2x4", "count": [2, 3] },
+        { "item": "nail", "count": [4, 12] }
+      ]
+    },
+    "connect_groups": ["WALL", "WOOD"]
+  },
+  {
+    "type": "terrain",
+    "id": "t_door_c",
+    "name": "closed door",
+    "description": "A sturdy wooden door.",
+    "symbol": "+",
+    "color": "brown",
+    "move_cost": 3,
+    "flags": ["DOOR", "TRANSPARENT"],
+    "open": "t_door_o",
+    "bash": {
+      "sound": "smash",
+      "str_min": 8,
+      "str_max": 16,
+      "furniture": ["f_door_frame"],
+      "items": [
+        { "item": "2x4", "count": [1, 2] },
+        { "item": "nail", "count": [2, 6] }
+      ]
+    }
+  },
+  {
+    "type": "terrain",
+    "id": "t_door_o",
+    "name": "open door",
+    "description": "An open door.",
+    "symbol": "'",
+    "color": "brown",
+    "move_cost": 1,
+    "flags": ["DOOR", "TRANSPARENT", "FLAT"],
+    "close": "t_door_c"
+  },
+  {
+    "type": "terrain",
+    "id": "t_window",
+    "name": "window",
+    "description": "A glass window.",
+    "symbol": "=",
+    "color": "cyan",
+    "move_cost": 0,
+    "flags": ["WINDOW", "TRANSPARENT", "FLAMMABLE"],
+    "bash": {
+      "sound": "crash",
+      "str_min": 2,
+      "str_max": 4,
+      "items": [
+        { "item": "glass_shard", "count": [2, 4] }
+      ],
+      "ter_set": "t_floor"
+    }
+  },
+  {
+    "type": "terrain",
+    "id": "t_stairs_down",
+    "name": "stairs down",
+    "description": "A staircase leading down.",
+    "symbol": ">",
+    "color": "white",
+    "move_cost": 2,
+    "flags": ["TRANSPARENT", "FLAT", "GOES_DOWN"],
+    "connect_groups": "STAIRS"
+  },
+  {
+    "type": "terrain",
+    "id": "t_stairs_up",
+    "name": "stairs up",
+    "description": "A staircase leading up.",
+    "symbol": "<",
+    "color": "white",
+    "move_cost": 2,
+    "flags": ["TRANSPARENT", "FLAT", "GOES_UP"],
+    "connect_groups": "STAIRS"
+  },
+  {
+    "type": "terrain",
+    "id": "t_water_pool",
+    "name": "pool of water",
+    "description": "A pool of water.",
+    "symbol": "~",
+    "color": "blue",
+    "move_cost": 3,
+    "flags": ["TRANSPARENT", "LIQUID", "SWIMMABLE"],
+    "bash": {
+      "sound": "splash",
+      "ter_set": "t_mud",
+      "str_min": 0,
+      "str_max": 0
+    }
+  },
+  {
+    "type": "terrain",
+    "id": "t_tree",
+    "name": "tree",
+    "description": "A large tree.",
+    "symbol": "♣",
+    "color": "green",
+    "move_cost": 2,
+    "flags": ["FLAMMABLE", "TREE", "CLIMBABLE"],
+    "bash": {
+      "sound": "crunch",
+      "str_min": 40,
+      "str_max": 80,
+      "items": [
+        { "item": "stick", "count": [2, 6] },
+        { "item": "withered_leaves", "count": [1, 3] }
+      ],
+      "ter_set": "t_dirt"
+    }
+  }
+]

@@ -7,6 +7,26 @@ export interface PointProps {
 }
 
 /**
+ * 向零截断整数除法（匹配 C++ 行为）
+ * @returns n / d 向零截断的结果
+ */
+function truncateDivide(n: number, d: number): number {
+  if (d === 0) throw new Error('Division by zero');
+  const result = n / d;
+  return result >= 0 ? Math.floor(result) : Math.ceil(result);
+}
+
+/**
+ * 向负无穷截断整数除法（CDDA 用于某些坐标转换）
+ * @returns n / d 向负无穷截断的结果
+ */
+function divideRoundToMinusInfinity(n: number, d: number): number {
+  if (d === 0) throw new Error('Division by zero');
+  if (n >= 0) return Math.floor(n / d);
+  return Math.floor((n - d + 1) / d);
+}
+
+/**
  * 二维点
  *
  * 不可变的二维坐标
@@ -16,6 +36,22 @@ export class Point {
 
   readonly x!: number;
   readonly y!: number;
+
+  // 特殊常量点（匹配 CDDA point.h）
+  static readonly ZERO = Object.freeze(new Point({ x: 0, y: 0 }));
+  static readonly MIN = Object.freeze(new Point({ x: -2147483648, y: -2147483648 })); // INT_MIN
+  static readonly MAX = Object.freeze(new Point({ x: 2147483647, y: 2147483647 })); // INT_MAX
+  static readonly INVALID = Object.freeze(new Point({ x: -2147483648, y: -2147483648 })); // = MIN
+
+  // 八方向常量（匹配 CDDA point.h）
+  static readonly NORTH = Object.freeze(new Point({ x: 0, y: -1 }));
+  static readonly NORTH_EAST = Object.freeze(new Point({ x: 1, y: -1 }));
+  static readonly EAST = Object.freeze(new Point({ x: 1, y: 0 }));
+  static readonly SOUTH_EAST = Object.freeze(new Point({ x: 1, y: 1 }));
+  static readonly SOUTH = Object.freeze(new Point({ x: 0, y: 1 }));
+  static readonly SOUTH_WEST = Object.freeze(new Point({ x: -1, y: 1 }));
+  static readonly WEST = Object.freeze(new Point({ x: -1, y: 0 }));
+  static readonly NORTH_WEST = Object.freeze(new Point({ x: -1, y: -1 }));
 
   constructor(props: PointProps) {
     this._props = props;
@@ -37,7 +73,7 @@ export class Point {
    * 创建原点
    */
   static origin(): Point {
-    return new Point({ x: 0, y: 0 });
+    return Point.ZERO;
   }
 
   /**
@@ -45,6 +81,13 @@ export class Point {
    */
   static from(x: number, y: number): Point {
     return new Point({ x, y });
+  }
+
+  /**
+   * 检查是否为无效坐标
+   */
+  isInvalid(): boolean {
+    return this.x === Point.INVALID.x && this.y === Point.INVALID.y;
   }
 
   /**
@@ -69,10 +112,49 @@ export class Point {
   }
 
   /**
-   * 除法
+   * 除法（向零截断，匹配 C++ 行为）
+   * C++: point operator/(int rhs) 使用整数除法，向零截断
    */
   divide(scalar: number): Point {
-    return this.set('x', Math.floor(this.x / scalar)).set('y', Math.floor(this.y / scalar));
+    return this.set('x', truncateDivide(this.x, scalar)).set('y', truncateDivide(this.y, scalar));
+  }
+
+  /**
+   * 除法（向负无穷截断，用于坐标转换）
+   * 匹配 CDDA divide_round_to_minus_infinity()
+   */
+  divideRoundToMinusInfinity(scalar: number): Point {
+    return this.set('x', divideRoundToMinusInfinity(this.x, scalar)).set(
+      'y',
+      divideRoundToMinusInfinity(this.y, scalar),
+    );
+  }
+
+  /**
+   * 绝对值
+   * 匹配 C++ point::abs()
+   */
+  abs(): Point {
+    return this.set('x', Math.abs(this.x)).set('y', Math.abs(this.y));
+  }
+
+  /**
+   * 旋转（顺时针，每次 90 度）
+   * 匹配 C++ point::rotate(int turns, const point &dim)
+   * @param turns 旋转次数（每次 90 度）
+   * @param dim 旋转区域尺寸
+   * @returns 旋转后的点
+   */
+  rotate(turns: number, dim: Point = Point.from(1, 1)): Point {
+    let ret = this;
+    // Normalize turns to 0-3
+    turns = ((turns % 4) + 4) % 4;
+    for (let i = 0; i < turns; i++) {
+      // 顺时针旋转 90 度: (x, y) -> (y, dim.y - 1 - x)
+      const tmp = ret.y;
+      ret = ret.set('x', tmp).set('y', dim.y - 1 - ret.x);
+    }
+    return ret;
   }
 
   /**

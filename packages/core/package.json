@@ -16,6 +16,10 @@
     "./world": {
       "import": "./dist/world/index.js",
       "types": "./dist/world/index.d.ts"
+    },
+    "./overmap": {
+      "import": "./dist/overmap/index.js",
+      "types": "./dist/overmap/index.d.ts"
     }
   },
   "scripts": {

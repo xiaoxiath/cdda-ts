@@ -10,13 +10,19 @@ export interface IntensityLevel {
 
 /**
  * 场相态
+ * 匹配 CDDA enums.h::phase_id
  */
 export enum FieldPhase {
+  /** 空/无效相态 */
+  PNULL = 'pnull',
+  /** 固体 */
   SOLID = 'solid',
+  /** 液体 */
   LIQUID = 'liquid',
+  /** 气体 */
   GAS = 'gas',
+  /** 等离子体 */
   PLASMA = 'plasma',
-  ENERGY = 'energy',
 }
 
 /**

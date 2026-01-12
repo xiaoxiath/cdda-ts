@@ -70,8 +70,13 @@ export interface FurnitureDeconstructJson {
 
 /**
  * 工作台 JSON
+ * 匹配 CDDA furn_workbench_info
  */
 export interface WorkbenchJson {
+  multiplier?: number;
+  allowed_mass?: number;
+  allowed_volume?: number;
+  // 保留旧字段以兼容旧 JSON 格式
   items?: Record<string, number | string>;
   multipliers?: Record<string, number>;
   tile?: boolean;
@@ -84,8 +89,14 @@ export interface WorkbenchJson {
 
 /**
  * 植物数据 JSON
+ * 匹配 CDDA plant_data
  */
 export interface PlantJson {
+  transform?: string;
+  base?: string;
+  growth_multiplier?: number;
+  harvest_multiplier?: number;
+  // 保留旧字段以兼容旧 JSON 格式
   transform_age?: number | string;
   transforms_into_furniture?: string;
   transforms_into_item?: string;
@@ -225,44 +236,26 @@ export class FurnitureParser {
 
   /**
    * 解析工作台信息
+   * 匹配 CDDA furn_workbench_info
    */
   private parseWorkbench(obj: WorkbenchJson): WorkbenchInfo {
-    const items = new Map<string, number>(
-      Object.entries(obj.items || {}).map(([k, v]) => [k, typeof v === 'number' ? v : 1])
-    );
-
-    const multipliers = obj.multipliers
-      ? new Map<string, number>(Object.entries(obj.multipliers).map(([k, v]) => [k, typeof v === 'number' ? v : 1]))
-      : undefined;
-
     return {
-      items,
-      multipliers,
-      tile: obj.tile,
-      requiresLight: obj.requires_light,
-      requiresPower: obj.requires_power,
-      requiresFlooring: obj.requires_flooring,
-      mass: obj.mass,
-      volume: obj.volume,
+      multiplier: obj.multiplier ?? 1.0,
+      allowedMass: obj.allowed_mass ?? obj.mass,
+      allowedVolume: obj.allowed_volume ?? obj.volume,
     };
   }
 
   /**
    * 解析植物数据
+   * 匹配 CDDA plant_data
    */
   private parsePlant(obj: PlantJson): PlantData {
     return {
-      transformAge: typeof obj.transform_age === 'number' ? obj.transform_age : 0,
-      transformToFurniture: obj.transforms_into_furniture || '',
-      transformToItem: obj.transforms_into_item || '',
-      fruitCount: obj.fruit_count || 0,
-      fruitDiv: obj.fruit_div || 1,
-      fruitType: obj.fruit_type || '',
-      byproducts: obj.byproducts,
-      seedType: obj.seed_type,
-      grow: obj.grow,
-      harvest: obj.harvest,
-      harvestSeason: obj.harvest_season,
+      transform: obj.transform || obj.transforms_into_furniture || '',
+      base: obj.base || '',
+      growthMultiplier: obj.growth_multiplier ?? 1.0,
+      harvestMultiplier: obj.harvest_multiplier ?? 1.0,
     };
   }
 

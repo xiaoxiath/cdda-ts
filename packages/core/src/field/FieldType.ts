@@ -22,6 +22,14 @@ export interface FieldTypeProps {
   lightEmitted: number;
   lightConsumed: number;
   flags: FieldTypeFlags;
+  /** 水下年龄加速（turn数），匹配 CDDA field_type::underwater_age_speedup */
+  underwaterAgeSpeedup?: number;
+  /** 户外年龄加速（turn数），匹配 CDDA field_type::outdoor_age_speedup */
+  outdoorAgeSpeedup?: number;
+  /** 衰减数量因子，匹配 CDDA field_type::decay_amount_factor */
+  decayAmountFactor?: number;
+  /** 传播百分比，匹配 CDDA field_type::percent_spread */
+  percentSpread?: number;
 }
 
 /**
@@ -48,6 +56,10 @@ export class FieldType {
   readonly lightEmitted!: number;
   readonly lightConsumed!: number;
   readonly flags!: FieldTypeFlags;
+  readonly underwaterAgeSpeedup!: number;
+  readonly outdoorAgeSpeedup!: number;
+  readonly decayAmountFactor!: number;
+  readonly percentSpread!: number;
 
   constructor(props?: Partial<FieldTypeProps>) {
     const defaults: FieldTypeProps = {
@@ -67,6 +79,10 @@ export class FieldType {
       lightEmitted: 0,
       lightConsumed: 0,
       flags: new FieldTypeFlags(),
+      underwaterAgeSpeedup: 0,
+      outdoorAgeSpeedup: 0,
+      decayAmountFactor: 0,
+      percentSpread: 0,
     };
 
     // Merge props with defaults, ensuring flags is always set
@@ -94,6 +110,10 @@ export class FieldType {
     Object.defineProperty(this, 'lightEmitted', { get: () => this._props.lightEmitted, enumerable: true });
     Object.defineProperty(this, 'lightConsumed', { get: () => this._props.lightConsumed, enumerable: true });
     Object.defineProperty(this, 'flags', { get: () => this._props.flags, enumerable: true });
+    Object.defineProperty(this, 'underwaterAgeSpeedup', { get: () => this._props.underwaterAgeSpeedup ?? 0, enumerable: true });
+    Object.defineProperty(this, 'outdoorAgeSpeedup', { get: () => this._props.outdoorAgeSpeedup ?? 0, enumerable: true });
+    Object.defineProperty(this, 'decayAmountFactor', { get: () => this._props.decayAmountFactor ?? 0, enumerable: true });
+    Object.defineProperty(this, 'percentSpread', { get: () => this._props.percentSpread ?? 0, enumerable: true });
 
     Object.freeze(this);
   }

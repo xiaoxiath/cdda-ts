@@ -5,15 +5,27 @@ import { FieldEntry } from '../field/FieldEntry';
 import { TrapId } from '../trap/types';
 
 /**
+ * 物品接口（简化版，用于 SOA 存储）
+ * 匹配 CDDA item 类的基本功能
+ */
+export interface Item {
+  id: string;
+  type: string;
+  count: number;
+  charges?: number;
+}
+
+/**
  * SOA (Structure of Arrays) 地图瓦片数据
- *
- * 优化缓存性能，每个属性使用独立的数组存储
+ * 匹配 CDDA maptile_soa 结构
  */
 export class MapTileSoa {
   readonly terrain: Uint16Array;
-  readonly furniture: Uint32Array; // 使用 Uint32Array 以支持更大的家具 ID
+  readonly furniture: Uint32Array;
+  readonly lum: Uint8Array;        // 发光物品数量，匹配 CDDA std::uint8_t lum
+  readonly items: Map<string, Item[]>; // 物品列表，匹配 CDDA cata::colony<item> itm
   readonly radiation: Uint16Array;
-  readonly traps: Map<string, TrapId>; // 使用 Map 存储字符串 trap ID
+  readonly traps: Map<string, TrapId>;
   readonly fields: Map<string, FieldEntry>;
 
   constructor(readonly size: number, terrain?: TerrainId[]) {
@@ -21,9 +33,11 @@ export class MapTileSoa {
 
     this.terrain = new Uint16Array(count);
     this.furniture = new Uint32Array(count);
+    this.lum = new Uint8Array(count);
     this.radiation = new Uint16Array(count);
     this.traps = new Map();
     this.fields = new Map();
+    this.items = new Map();
 
     // 初始化地形
     if (terrain) {
@@ -80,9 +94,14 @@ export class MapTileSoa {
     const idx = this.getIndex(x, y);
     const key = `${x},${y}`;
 
+    // 获取该位置的所有物品
+    const tileItems = this.items.get(key) || [];
+
     return new MapTile({
       terrain: this.terrain[idx],
       furniture: this.furniture[idx] || null,
+      lum: this.lum[idx],
+      items: tileItems,
       radiation: this.radiation[idx],
       field: this.fields.get(key) || null,
       trap: this.traps.get(key) || null,
@@ -106,7 +125,13 @@ export class MapTileSoa {
     // 复制现有数据
     newSoa.terrain.set(this.terrain);
     newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
     newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
 
     // 复制 traps
     this.traps.forEach((trap, k) => {
@@ -116,7 +141,15 @@ export class MapTileSoa {
     // 更新值
     newSoa.terrain[idx] = tile.terrain;
     newSoa.furniture[idx] = tile.furniture || 0;
+    newSoa.lum[idx] = tile.lum || 0;
     newSoa.radiation[idx] = tile.radiation;
+
+    // 更新 items
+    if (tile.items && tile.items.length > 0) {
+      newSoa.items.set(key, tile.items);
+    } else {
+      newSoa.items.delete(key);
+    }
 
     // 更新 trap
     if (tile.trap) {
@@ -163,19 +196,25 @@ export class MapTileSoa {
 
     newSoa.terrain.set(this.terrain);
     newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
     newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
 
     // 复制 traps
     this.traps.forEach((trap, k) => {
       newSoa.traps.set(k, trap);
     });
 
-    newSoa.terrain[idx] = terrainId;
-
     // 复制 fields
     this.fields.forEach((field, k) => {
       newSoa.fields.set(k, field);
     });
+
+    newSoa.terrain[idx] = terrainId;
 
     return newSoa;
   }
@@ -204,19 +243,215 @@ export class MapTileSoa {
 
     newSoa.terrain.set(this.terrain);
     newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
     newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
 
     // 复制 traps
     this.traps.forEach((trap, k) => {
       newSoa.traps.set(k, trap);
     });
 
+    // 复制 fields
+    this.fields.forEach((field, k) => {
+      newSoa.fields.set(k, field);
+    });
+
     newSoa.furniture[idx] = furnitureId || 0;
+
+    return newSoa;
+  }
+
+  /**
+   * 获取光照等级（发光物品数量）
+   * 匹配 CDDA maptile_soa::lum
+   */
+  getLum(x: number, y: number): number {
+    if (!this.isValid(x, y)) {
+      return 0;
+    }
+    return this.lum[this.getIndex(x, y)];
+  }
+
+  /**
+   * 设置光照等级
+   * 匹配 CDDA maptile_soa::lum
+   */
+  setLum(x: number, y: number, lum: number): MapTileSoa {
+    if (!this.isValid(x, y)) {
+      return this;
+    }
+
+    const idx = this.getIndex(x, y);
+    const newSoa = new MapTileSoa(this.size);
+
+    newSoa.terrain.set(this.terrain);
+    newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
+    newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
+
+    // 复制 traps
+    this.traps.forEach((trap, k) => {
+      newSoa.traps.set(k, trap);
+    });
 
     // 复制 fields
     this.fields.forEach((field, k) => {
       newSoa.fields.set(k, field);
     });
+
+    newSoa.lum[idx] = Math.max(0, Math.min(255, lum));
+
+    return newSoa;
+  }
+
+  /**
+   * 增加光照等级（发光物品增加）
+   */
+  addLum(x: number, y: number, delta: number = 1): MapTileSoa {
+    const currentLum = this.getLum(x, y);
+    return this.setLum(x, y, currentLum + delta);
+  }
+
+  /**
+   * 减少光照等级（发光物品移除）
+   */
+  subLum(x: number, y: number, delta: number = 1): MapTileSoa {
+    const currentLum = this.getLum(x, y);
+    return this.setLum(x, y, Math.max(0, currentLum - delta));
+  }
+
+  /**
+   * 获取物品列表
+   * 匹配 CDDA maptile_soa::itm
+   */
+  getItems(x: number, y: number): Item[] {
+    const key = `${x},${y}`;
+    return this.items.get(key) || [];
+  }
+
+  /**
+   * 添加物品
+   */
+  addItem(x: number, y: number, item: Item): MapTileSoa {
+    const key = `${x},${y}`;
+    const newSoa = new MapTileSoa(this.size);
+
+    newSoa.terrain.set(this.terrain);
+    newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
+    newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
+
+    // 复制 traps
+    this.traps.forEach((trap, k) => {
+      newSoa.traps.set(k, trap);
+    });
+
+    // 复制 fields
+    this.fields.forEach((field, k) => {
+      newSoa.fields.set(k, field);
+    });
+
+    // 添加新物品
+    const currentItems = this.items.get(key) || [];
+    newSoa.items.set(key, [...currentItems, item]);
+
+    // 如果物品发光，增加 lum
+    // TODO: 需要根据物品类型判断是否发光
+    // newSoa = newSoa.addLum(x, y, 1);
+
+    return newSoa;
+  }
+
+  /**
+   * 移除物品
+   */
+  removeItem(x: number, y: number, itemIndex: number): MapTileSoa {
+    const key = `${x},${y}`;
+    const currentItems = this.items.get(key);
+
+    if (!currentItems || itemIndex < 0 || itemIndex >= currentItems.length) {
+      return this;
+    }
+
+    const newSoa = new MapTileSoa(this.size);
+
+    newSoa.terrain.set(this.terrain);
+    newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
+    newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
+
+    // 复制 traps
+    this.traps.forEach((trap, k) => {
+      newSoa.traps.set(k, trap);
+    });
+
+    // 复制 fields
+    this.fields.forEach((field, k) => {
+      newSoa.fields.set(k, field);
+    });
+
+    // 移除物品
+    const newItems = [...currentItems];
+    const removedItem = newItems.splice(itemIndex, 1)[0];
+    newSoa.items.set(key, newItems);
+
+    // 如果物品发光，减少 lum
+    // TODO: 需要根据物品类型判断是否发光
+    // newSoa = newSoa.subLum(x, y, 1);
+
+    return newSoa;
+  }
+
+  /**
+   * 清空物品
+   */
+  clearItems(x: number, y: number): MapTileSoa {
+    const key = `${x},${y}`;
+    const newSoa = new MapTileSoa(this.size);
+
+    newSoa.terrain.set(this.terrain);
+    newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
+    newSoa.radiation.set(this.radiation);
+
+    // 复制 items（跳过当前 key）
+    this.items.forEach((items, k) => {
+      if (k !== key) {
+        newSoa.items.set(k, [...items]);
+      }
+    });
+
+    // 复制 traps
+    this.traps.forEach((trap, k) => {
+      newSoa.traps.set(k, trap);
+    });
+
+    // 复制 fields
+    this.fields.forEach((field, k) => {
+      newSoa.fields.set(k, field);
+    });
+
+    newSoa.items.delete(key);
 
     return newSoa;
   }
@@ -238,7 +473,13 @@ export class MapTileSoa {
 
     newSoa.terrain.set(this.terrain);
     newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
     newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
 
     // 复制 traps
     this.traps.forEach((trap, k) => {
@@ -284,11 +525,22 @@ export class MapTileSoa {
 
     newSoa.terrain.set(this.terrain);
     newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
     newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
 
     // 复制 traps
     this.traps.forEach((trap, k) => {
       newSoa.traps.set(k, trap);
+    });
+
+    // 复制 fields
+    this.fields.forEach((field, k) => {
+      newSoa.fields.set(k, field);
     });
 
     // 设置新 trap
@@ -298,10 +550,51 @@ export class MapTileSoa {
       newSoa.traps.delete(key);
     }
 
+    return newSoa;
+  }
+
+  /**
+   * 获取辐射值
+   */
+  getRadiation(x: number, y: number): number {
+    if (!this.isValid(x, y)) {
+      return 0;
+    }
+    return this.radiation[this.getIndex(x, y)];
+  }
+
+  /**
+   * 设置辐射值
+   */
+  setRadiation(x: number, y: number, radiation: number): MapTileSoa {
+    if (!this.isValid(x, y)) {
+      return this;
+    }
+
+    const idx = this.getIndex(x, y);
+    const newSoa = new MapTileSoa(this.size);
+
+    newSoa.terrain.set(this.terrain);
+    newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
+    newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
+
+    // 复制 traps
+    this.traps.forEach((trap, k) => {
+      newSoa.traps.set(k, trap);
+    });
+
     // 复制 fields
     this.fields.forEach((field, k) => {
       newSoa.fields.set(k, field);
     });
+
+    newSoa.radiation[idx] = Math.max(0, radiation);
 
     return newSoa;
   }
@@ -350,7 +643,13 @@ export class MapTileSoa {
 
     newSoa.terrain.fill(terrainId);
     newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
     newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
 
     // 复制 traps
     this.traps.forEach((trap, k) => {
@@ -373,13 +672,20 @@ export class MapTileSoa {
 
     newSoa.terrain.set(this.terrain);
     newSoa.furniture.set(this.furniture);
+    newSoa.lum.set(this.lum);
     newSoa.radiation.set(this.radiation);
+
+    // 复制 items
+    this.items.forEach((items, k) => {
+      newSoa.items.set(k, [...items]);
+    });
 
     // 复制 traps
     this.traps.forEach((trap, k) => {
       newSoa.traps.set(k, trap);
     });
 
+    // 复制 fields
     this.fields.forEach((field, k) => {
       newSoa.fields.set(k, field.clone());
     });

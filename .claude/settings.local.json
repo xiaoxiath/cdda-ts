@@ -40,7 +40,8 @@
       "Bash(wc:*)",
       "Bash(lsof:*)",
       "Bash(curl:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(tree:*)"
     ]
   }
 }

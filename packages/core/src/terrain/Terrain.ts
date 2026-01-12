@@ -3,44 +3,113 @@ import { TerrainFlags, TerrainFlag } from './types';
 import { ItemSpawn } from '../types/common';
 
 /**
+ * 场效果数据
+ * 匹配 CDDA std::pair<field_type_str_id, int>
+ */
+export interface FieldEffectData {
+  type: string; // field_type_str_id
+  intensity: number;
+}
+
+/**
  * 射击数据
+ * 匹配 CDDA map_shoot_info
  */
 export interface ShootData {
+  // 基础命中概率（默认 100%）
   chanceToHit?: number;
-  reduceDamage?: [number, number];
-  reduceDamageLaser?: [number, number];
-  destroyDamage?: [number, number];
+  // 最小伤害减免
+  reduceDamageMin?: number;
+  // 最大伤害减免
+  reduceDamageMax?: number;
+  // 激光最小伤害减免
+  reduceDamageMinLaser?: number;
+  // 激光最大伤害减免
+  reduceDamageMaxLaser?: number;
+  // 摧毁所需最小伤害
+  destroyDamageMin?: number;
+  // 摧毁所需最大伤害
+  destroyDamageMax?: number;
+  // 激光是否无法摧毁
+  noLaserDestroy?: boolean;
+}
+
+/**
+ * 拆解技能数据
+ * 匹配 CDDA map_deconstruct_skill
+ */
+export interface DeconstructSkillData {
+  id: string; // skill_id
+  min: number;
+  max: number;
+  multiplier: number;
 }
 
 /**
  * 破坏信息
+ * 匹配 CDDA map_ter_bash_info (继承自 map_common_bash_info)
  */
 export interface BashInfo {
-  sound: string;
-  strMin: number;
-  strMax: number;
-  furniture: string[];
-  items?: ItemSpawn[];
-  ter?: TerrainId;
-  successMsg?: string;
-  failMsg?: string;
-  soundChance?: number;
-  quiet?: string;
-  strMinSupported?: number;  // 新增：有支撑时的最小力量
-  soundVol?: number;  // 新增：音效音量
-  soundFail?: string;  // 新增：失败音效
-  soundFailVol?: number;  // 新增：失败音效音量
+  // 声音相关
+  sound?: string; // 破坏成功的声音
+  soundVol?: number; // 破坏成功的音量
+  soundFail?: string; // 破坏失败的声音
+  soundFailVol?: number; // 破坏失败的音量
+  soundChance?: number; // 声音触发概率
+
+  // 力量需求
+  strMin: number; // 最小力量需求
+  strMax: number; // 最大力量需求（随机值在此范围）
+  strMinBlocked?: number; // 有相邻家具时的最小力量
+  strMaxBlocked?: number; // 有相邻家具时的最大力量
+  strMinSupported?: number; // 有支撑时的最小力量
+  strMaxSupported?: number; // 有支撑时的最大力量
+
+  // 破坏结果
+  ter?: TerrainId; // 破坏后变成的地形
+  terBashedFromAbove?: TerrainId; // 从上方破坏时变成的地形
+  furniture?: string[]; // 破坏后生成的家具
+  items?: ItemSpawn[]; // 破坏后掉落的物品
+  dropGroup?: string; // item_group_id
+
+  // 场效果
+  hitField?: FieldEffectData; // 被击中时产生的场
+  destroyedField?: FieldEffectData; // 被摧毁时产生的场
+
+  // 消息
+  successMsg?: string; // 成功消息
+  failMsg?: string; // 失败消息
+  quiet?: string; // 静音破坏时的消息
+
+  // 特殊属性
+  explosive?: number; // 爆炸威力
+  destroyOnly?: boolean; // 只能被摧毁，不能被普通破坏
+  bashBelow?: boolean; // 同时破坏下方的地形
+  collapseRadius?: number; // 支撑的帐篷半径
+  tentCenters?: string[]; // 帐篷中心家具列表
+
+  // 兼容旧数据
+  furniture?: string[]; // 已废弃，使用 dropGroup 代替
 }
 
 /**
  * 拆解信息
+ * 匹配 CDDA map_ter_deconstruct_info (继承自 map_common_deconstruct_info)
  */
 export interface DeconstructInfo {
-  furniture: string;
-  items?: ItemSpawn[];
-  ter?: TerrainId;
-  time: number;
-  simple?: boolean;
+  // 拆解结果
+  ter?: TerrainId; // 拆解后变成的地形
+  furniture?: string; // 拆解后变成的家具
+  items?: ItemSpawn[]; // 拆解获得的物品
+  dropGroup?: string; // item_group_id
+  time: number; // 拆解所需时间（回合）
+  simple?: boolean; // 是否简单拆解（无需工具）
+
+  // 技能奖励
+  skill?: DeconstructSkillData;
+
+  // 特殊属性
+  deconstructAbove?: boolean; // 需要先拆除上方的屋顶
 }
 
 /**

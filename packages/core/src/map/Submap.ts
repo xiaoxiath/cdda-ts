@@ -384,4 +384,163 @@ export class Submap {
       lastTouched: this.lastTouched,
     });
   }
+
+  /**
+   * 旋转子地图
+   * 匹配 CDDA submap::rotate()
+   * @param turns 旋转次数（90度顺时针）
+   */
+  rotate(turns: number): Submap {
+    // 如果是 uniform，旋转不会改变任何东西
+    if (this.isUniform()) {
+      return this;
+    }
+
+    turns = ((turns % 4) + 4) % 4; // 规范化到 0-3
+
+    if (turns === 0) {
+      return this;
+    }
+
+    const dim = { x: this.size, y: this.size };
+    const newTiles = this.tiles!.clone();
+
+    // 旋转瓦片数据
+    for (let y = 0; y < this.size; y++) {
+      for (let x = 0; x < this.size; x++) {
+        const fromPoint = { x, y };
+        const toPoint = this._rotatePoint(fromPoint, turns, dim);
+        this._swapTiles(newTiles, fromPoint, toPoint);
+      }
+    }
+
+    // 旋转生成点位置
+    const rotatedSpawns = this.spawns.map((spawn) => ({
+      ...spawn,
+      position: Point.from({
+        x: spawn.position.x,
+        y: spawn.position.y,
+      }).rotate(turns, Point.from(dim.x, dim.y)),
+    }));
+
+    return this.set('tiles', newTiles).set('spawns', rotatedSpawns);
+  }
+
+  /**
+   * 镜像子地图
+   * 匹配 CDDA submap::mirror()
+   * @param horizontally true=水平镜像, false=垂直镜像
+   */
+  mirror(horizontally: boolean): Submap {
+    // 如果是 uniform，镜像不会改变任何东西
+    if (this.isUniform()) {
+      return this;
+    }
+
+    const newTiles = this.tiles!.clone();
+    const size = this.size;
+
+    if (horizontally) {
+      // 水平镜像：左右翻转
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size / 2; x++) {
+          this._swapTiles(newTiles, { x, y }, { x: size - 1 - x, y });
+        }
+      }
+    } else {
+      // 垂直镜像：上下翻转
+      for (let y = 0; y < size / 2; y++) {
+        for (let x = 0; x < size; x++) {
+          this._swapTiles(newTiles, { x, y }, { x, y: size - 1 - y });
+        }
+      }
+    }
+
+    // 镜像生成点位置
+    const mirroredSpawns = this.spawns.map((spawn) => {
+      let newX = spawn.position.x;
+      let newY = spawn.position.y;
+
+      if (horizontally) {
+        newX = size - 1 - spawn.position.x;
+      } else {
+        newY = size - 1 - spawn.position.y;
+      }
+
+      return {
+        ...spawn,
+        position: Point.from({ x: newX, y: newY }),
+      };
+    });
+
+    return this.set('tiles', newTiles).set('spawns', mirroredSpawns);
+  }
+
+  /**
+   * 旋转点的辅助方法
+   * 匹配 CDDA point::rotate()
+   */
+  private _rotatePoint(
+    p: { x: number; y: number },
+    turns: number,
+    dim: { x: number; y: number }
+  ): { x: number; y: number } {
+    let x = p.x;
+    let y = p.y;
+
+    for (let i = 0; i < turns; i++) {
+      const tmp = y;
+      y = x;
+      x = dim.y - 1 - tmp;
+    }
+
+    return { x, y };
+  }
+
+  /**
+   * 交换两个位置的瓦片数据
+   * 匹配 CDDA maptile_soa::swap_soa_tile()
+   */
+  private _swapTiles(
+    tiles: MapTileSoa,
+    p1: { x: number; y: number },
+    p2: { x: number; y: number }
+  ): void {
+    // 交换地形
+    const tempTerrain = tiles.terrain[p1.y * tiles.size + p1.x];
+    tiles.terrain[p1.y * tiles.size + p1.x] = tiles.terrain[p2.y * tiles.size + p2.x];
+    tiles.terrain[p2.y * tiles.size + p2.x] = tempTerrain;
+
+    // 交换家具
+    const tempFurniture = tiles.furniture[p1.y * tiles.size + p1.x];
+    tiles.furniture[p1.y * tiles.size + p1.x] = tiles.furniture[p2.y * tiles.size + p2.x];
+    tiles.furniture[p2.y * tiles.size + p2.x] = tempFurniture;
+
+    // 交换光照
+    const tempLum = tiles.lum[p1.y * tiles.size + p1.x];
+    tiles.lum[p1.y * tiles.size + p1.x] = tiles.lum[p2.y * tiles.size + p2.x];
+    tiles.lum[p2.y * tiles.size + p2.x] = tempLum;
+
+    // 交换辐射
+    const tempRad = tiles.radiation[p1.y * tiles.size + p1.x];
+    tiles.radiation[p1.y * tiles.size + p1.x] = tiles.radiation[p2.y * tiles.size + p2.x];
+    tiles.radiation[p2.y * tiles.size + p2.x] = tempRad;
+
+    // 交换物品
+    const key1 = `${p1.x},${p1.y}`;
+    const key2 = `${p2.x},${p2.y}`;
+    const tempItems = tiles.items.get(key1);
+    tiles.items.set(key1, tiles.items.get(key2) || []);
+    tiles.items.set(key2, tempItems || []);
+
+    // 交换场
+    const tempField = tiles.fields.get(key1);
+    tiles.fields.set(key1, tiles.fields.get(key2)!);
+    tiles.fields.set(key2, tempField!);
+
+    // 交换陷阱
+    const tempTrap = tiles.traps.get(key1);
+    tiles.traps.set(key1, tiles.traps.get(key2)!);
+    tiles.traps.set(key2, tempTrap!);
+  }
 }

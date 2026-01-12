@@ -1,6 +1,7 @@
 export * from './types';
 export * from './FieldEntry';
 export * from './FieldType';
+export * from './FieldEffect';
 export * from './FieldData';
 export * from './FieldTypeParser';
 export * from './FieldTypeLoader';

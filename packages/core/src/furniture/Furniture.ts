@@ -4,62 +4,84 @@ import { ItemSpawn } from '../types/common';
 
 /**
  * 家具破坏信息
+ * 匹配 CDDA map_furn_bash_info (继承自 map_common_bash_info)
  */
 export interface FurnitureBashInfo {
+  // 声音相关
   sound?: string;
+  soundVol?: number;
+  soundFail?: string;
+  soundFailVol?: number;
+  soundChance?: number;
+
+  // 力量需求
   strMin?: number;
   strMax?: number;
-  soundChance?: number;
-  quiet?: string;
-  furniture?: string[];
+  strMinBlocked?: number;
+  strMaxBlocked?: number;
+
+  // 破坏结果
+  furn?: string; // 破坏后变成的家具
   items?: ItemSpawn[];
-  ter?: number;
+  dropGroup?: string;
+
+  // 消息
   successMsg?: string;
   failMsg?: string;
+  quiet?: string;
+
+  // 特殊属性
   destroyOnly?: boolean;
 }
 
 /**
  * 家具拆解信息
+ * 匹配 CDDA map_furn_deconstruct_info (继承自 map_common_deconstruct_info)
  */
 export interface FurnitureDeconstructInfo {
-  furniture?: string;
+  // 拆解结果
+  furn?: string;
   items?: ItemSpawn[];
+  dropGroup?: string;
   ter?: number;
   time?: number;
   simple?: boolean;
-  furnitureOnly?: boolean;
+
+  // 技能奖励
+  skill?: {
+    id: string;
+    min: number;
+    max: number;
+    multiplier: number;
+  };
 }
 
 /**
  * 工作台信息
+ * 匹配 CDDA furn_workbench_info
  */
 export interface WorkbenchInfo {
-  items: Map<string, number>;
-  multipliers?: Map<string, number>;
-  tile?: boolean;
-  requiresLight?: boolean;
-  requiresPower?: boolean;
-  requiresFlooring?: boolean;
-  mass?: number;
-  volume?: number;
+  /** 基础倍率，应用于在此制作 */
+  multiplier: number;
+  /** 在应用制作速度惩罚之前允许的质量 */
+  allowedMass?: number;
+  /** 在应用制作速度惩罚之前允许的体积 */
+  allowedVolume?: number;
 }
 
 /**
  * 植物数据
+ * 匹配 CDDA plant_data
  */
 export interface PlantData {
-  transformAge: number;
-  transformToFurniture: string;
-  transformToItem: string;
-  fruitCount: number;
-  fruitDiv: number;
-  fruitType: string;
-  byproducts?: ItemSpawn[];
-  seedType?: string;
-  grow?: number;
-  harvest?: number;
-  harvestSeason?: string[];
+  /** 家具成长时或种植种子时变成的家具 */
+  transform: string;
+  /** 植物的基础家具，种植前和被吃掉后变成的家具 */
+  base: string;
+  /** 以正常植物的百分之几速度生长 */
+  growthMultiplier: number;
+  /** 该作物相对于正常收获的百分比 */
+  harvestMultiplier: number;
 }
 
 /**
@@ -412,18 +434,27 @@ export class Furniture {
   }
 
   /**
-   * 检查是否支持特定技能
+   * 获取工作台倍率
+   * 匹配 CDDA furn_workbench_info::multiplier
    */
-  supportsSkill(skill: string): boolean {
-    return this.workbench?.items.has(skill) ?? false;
+  getWorkbenchMultiplier(): number {
+    return this.workbench?.multiplier ?? 1.0;
   }
 
   /**
-   * 获取技能倍率
+   * 获取工作台允许的最大质量
+   * 匹配 CDDA furn_workbench_info::allowed_mass
    */
-  getSkillMultiplier(skill: string): number {
-    if (!this.workbench) return 1.0;
-    return this.workbench.multipliers?.get(skill) ?? this.workbench.items.get(skill) ?? 1.0;
+  getAllowedMass(): number {
+    return this.workbench?.allowedMass ?? 0;
+  }
+
+  /**
+   * 获取工作台允许的最大体积
+   * 匹配 CDDA furn_workbench_info::allowed_volume
+   */
+  getAllowedVolume(): number {
+    return this.workbench?.allowedVolume ?? 0;
   }
 
   /**
@@ -441,10 +472,35 @@ export class Furniture {
   }
 
   /**
-   * 检查是否成熟
+   * 获取植物成熟后的家具 ID
+   * 匹配 CDDA plant_data::transform
    */
-  isPlantMature(age: number): boolean {
-    return this.plant ? age >= this.plant.transformAge : false;
+  getPlantTransform(): string | undefined {
+    return this.plant?.transform;
+  }
+
+  /**
+   * 获取植物基础家具 ID
+   * 匹配 CDDA plant_data::base
+   */
+  getPlantBase(): string | undefined {
+    return this.plant?.base;
+  }
+
+  /**
+   * 获取植物生长倍率
+   * 匹配 CDDA plant_data::growth_multiplier
+   */
+  getGrowthMultiplier(): number {
+    return this.plant?.growthMultiplier ?? 1.0;
+  }
+
+  /**
+   * 获取植物收获倍率
+   * 匹配 CDDA plant_data::harvest_multiplier
+   */
+  getHarvestMultiplier(): number {
+    return this.plant?.harvestMultiplier ?? 1.0;
   }
 
   /**

@@ -192,7 +192,7 @@ describe('Furniture', () => {
     it('should check workbench', () => {
       const f = new Furniture({
         flags: new FurnitureFlags([FurnitureFlag.WORKBENCH]),
-        workbench: { items: new Map([['all', 1]]) },
+        workbench: { multiplier: 2.0, allowedMass: 20000, allowedVolume: 10000 },
       });
       expect(f.isWorkbench()).toBe(true);
 
@@ -205,12 +205,10 @@ describe('Furniture', () => {
     it('should check plant', () => {
       const f = new Furniture({
         plant: {
-          transformAge: 1000,
-          transformToFurniture: 'f_plant',
-          transformToItem: 'seed',
-          fruitCount: 0,
-          fruitDiv: 1,
-          fruitType: '',
+          transform: 'f_plant',
+          base: 'f_plant_seed',
+          growthMultiplier: 1.0,
+          harvestMultiplier: 1.0,
         },
       });
       expect(f.isPlant()).toBe(true);
@@ -368,7 +366,7 @@ describe('Furniture', () => {
 
   describe('workbench methods', () => {
     it('should get workbench info', () => {
-      const wb = { items: new Map([['all', 1]]), multipliers: new Map([['electronics', 2]]) };
+      const wb = { multiplier: 2.5, allowedMass: 30000, allowedVolume: 15000 };
       const f = new Furniture({
         flags: new FurnitureFlags([FurnitureFlag.WORKBENCH]),
         workbench: wb,
@@ -376,56 +374,104 @@ describe('Furniture', () => {
       expect(f.getWorkbenchInfo()).toBe(wb);
     });
 
-    it('should check supports skill', () => {
+    it('should get workbench multiplier', () => {
       const f = new Furniture({
         flags: new FurnitureFlags([FurnitureFlag.WORKBENCH]),
-        workbench: { items: new Map([['electronics', 1], ['cooking', 2]]) },
+        workbench: { multiplier: 2.5 },
       });
-      expect(f.supportsSkill('electronics')).toBe(true);
-      expect(f.supportsSkill('tailor')).toBe(false);
+      expect(f.getWorkbenchMultiplier()).toBe(2.5);
     });
 
-    it('should get skill multiplier', () => {
+    it('should get allowed mass', () => {
       const f = new Furniture({
         flags: new FurnitureFlags([FurnitureFlag.WORKBENCH]),
-        workbench: {
-          items: new Map([['all', 1]]),
-          multipliers: new Map([['electronics', 2]]),
-        },
+        workbench: { multiplier: 1.5, allowedMass: 20000 },
       });
-      expect(f.getSkillMultiplier('electronics')).toBe(2);
-      expect(f.getSkillMultiplier('tailor')).toBe(1);
+      expect(f.getAllowedMass()).toBe(20000);
+    });
+
+    it('should get allowed volume', () => {
+      const f = new Furniture({
+        flags: new FurnitureFlags([FurnitureFlag.WORKBENCH]),
+        workbench: { multiplier: 1.5, allowedVolume: 10000 },
+      });
+      expect(f.getAllowedVolume()).toBe(10000);
+    });
+
+    it('should return default values when no workbench', () => {
+      const f = new Furniture();
+      expect(f.getWorkbenchMultiplier()).toBe(1.0);
+      expect(f.getAllowedMass()).toBe(0);
+      expect(f.getAllowedVolume()).toBe(0);
     });
   });
 
   describe('plant methods', () => {
     it('should get plant data', () => {
       const plantData = {
-        transformAge: 1000,
-        transformToFurniture: 'f_plant',
-        transformToItem: 'seed',
-        fruitCount: 5,
-        fruitDiv: 1,
-        fruitType: 'tomato',
+        transform: 'f_plant',
+        base: 'f_plant_seed',
+        growthMultiplier: 1.5,
+        harvestMultiplier: 2.0,
       };
       const f = new Furniture({ plant: plantData });
       expect(f.getPlantData()).toBe(plantData);
     });
 
-    it('should check if plant is mature', () => {
+    it('should get plant transform', () => {
       const f = new Furniture({
         plant: {
-          transformAge: 1000,
-          transformToFurniture: 'f_plant',
-          transformToItem: 'seed',
-          fruitCount: 0,
-          fruitDiv: 1,
-          fruitType: '',
+          transform: 'f_plant',
+          base: 'f_plant_seed',
+          growthMultiplier: 1.0,
+          harvestMultiplier: 1.0,
         },
       });
-      expect(f.isPlantMature(500)).toBe(false);
-      expect(f.isPlantMature(1000)).toBe(true);
-      expect(f.isPlantMature(1500)).toBe(true);
+      expect(f.getPlantTransform()).toBe('f_plant');
+    });
+
+    it('should get plant base', () => {
+      const f = new Furniture({
+        plant: {
+          transform: 'f_plant',
+          base: 'f_plant_seed',
+          growthMultiplier: 1.0,
+          harvestMultiplier: 1.0,
+        },
+      });
+      expect(f.getPlantBase()).toBe('f_plant_seed');
+    });
+
+    it('should get growth multiplier', () => {
+      const f = new Furniture({
+        plant: {
+          transform: 'f_plant',
+          base: 'f_plant_seed',
+          growthMultiplier: 1.5,
+          harvestMultiplier: 1.0,
+        },
+      });
+      expect(f.getGrowthMultiplier()).toBe(1.5);
+    });
+
+    it('should get harvest multiplier', () => {
+      const f = new Furniture({
+        plant: {
+          transform: 'f_plant',
+          base: 'f_plant_seed',
+          growthMultiplier: 1.0,
+          harvestMultiplier: 2.0,
+        },
+      });
+      expect(f.getHarvestMultiplier()).toBe(2.0);
+    });
+
+    it('should return default values when no plant', () => {
+      const f = new Furniture();
+      expect(f.getPlantTransform()).toBeUndefined();
+      expect(f.getPlantBase()).toBeUndefined();
+      expect(f.getGrowthMultiplier()).toBe(1.0);
+      expect(f.getHarvestMultiplier()).toBe(1.0);
     });
   });
 
@@ -520,7 +566,7 @@ describe('FurnitureData', () => {
         symbol: 'W',
         color: 'blue',
         flags: new FurnitureFlags([FurnitureFlag.WORKBENCH]),
-        workbench: { items: new Map([['all', 1]]) },
+        workbench: { multiplier: 2.0, allowedMass: 20000, allowedVolume: 10000 },
       });
       const f3 = new Furniture({
         id: 3,
@@ -630,9 +676,9 @@ describe('FurnitureParser', () => {
         required_str: 25,
         mass: 40000,
         workbench: {
-          items: { all: 1, electronics: 2 },
-          multipliers: { electronics: 2 },
-          tile: true,
+          multiplier: 1.5,
+          allowedMass: 30000,
+          allowedVolume: 15000,
         },
         bash: {
           str_min: 20,
@@ -682,16 +728,18 @@ describe('FurnitureParser', () => {
         color: 'blue',
         flags: ['WORKBENCH'],
         workbench: {
-          items: { all: 1, electronics: 2 },
-          multipliers: { electronics: 2 },
+          multiplier: 2.0,
+          allowed_mass: 30000,
+          allowed_volume: 15000,
         },
       };
 
       const furniture = parser.parse(json);
 
       expect(furniture.isWorkbench()).toBe(true);
-      expect(furniture.supportsSkill('all')).toBe(true);
-      expect(furniture.getSkillMultiplier('electronics')).toBe(2);
+      expect(furniture.getWorkbenchMultiplier()).toBe(2.0);
+      expect(furniture.getAllowedMass()).toBe(30000);
+      expect(furniture.getAllowedVolume()).toBe(15000);
     });
 
     it('should parse plant data', () => {
@@ -703,22 +751,20 @@ describe('FurnitureParser', () => {
         color: 'green',
         flags: ['PLANT'],
         plant: {
-          transform_age: 100800,
-          transforms_into_furniture: 'f_plant',
-          transforms_into_item: 'seed',
-          fruit_count: 0,
-          fruit_div: 1,
-          fruit_type: '',
-          grow: 600,
-          harvest: 10,
+          transform: 'f_plant',
+          base: 'f_sapling',
+          growth_multiplier: 1.5,
+          harvest_multiplier: 2.0,
         },
       };
 
       const furniture = parser.parse(json);
 
       expect(furniture.isPlant()).toBe(true);
-      expect(furniture.isPlantMature(100800)).toBe(true);
-      expect(furniture.isPlantMature(1000)).toBe(false);
+      expect(furniture.getPlantTransform()).toBe('f_plant');
+      expect(furniture.getPlantBase()).toBe('f_sapling');
+      expect(furniture.getGrowthMultiplier()).toBe(1.5);
+      expect(furniture.getHarvestMultiplier()).toBe(2.0);
     });
 
     it('should parse emitters', () => {
@@ -821,7 +867,7 @@ describe('FurnitureLoader', () => {
           symbol: 'W',
           color: 'blue',
           flags: ['WORKBENCH'],
-          workbench: { items: { all: 1 } },
+          workbench: { multiplier: 2.0 },
         },
         { type: 'furniture', id: 'f_lamp', name: 'lamp', symbol: '5', color: 'yellow', emitted_light: 5 },
       ];

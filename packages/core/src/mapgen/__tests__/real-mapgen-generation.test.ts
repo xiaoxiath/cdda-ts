@@ -14,9 +14,10 @@ import { TrapLoader } from '../../trap/TrapLoader';
 import { MapGenContext } from '../MapGenFunction';
 import { GameMap } from '../../map/GameMap';
 import { Tripoint } from '../../coordinates/Tripoint';
+import { getJsonPath } from '../../config/CddaConfig';
 
 describe('Real Cataclysm-DDA MapGen Generation', () => {
-  const DATA_PATH = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json';
+  const DATA_PATH = getJsonPath();
 
   let terrainLoader: TerrainLoader;
   let furnitureLoader: FurnitureLoader;

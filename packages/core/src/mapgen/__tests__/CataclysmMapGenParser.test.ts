@@ -12,9 +12,10 @@ import {
   type CataclysmMapGenJson,
   type ParsedMapGenData,
 } from '../CataclysmMapGenParser';
+import { getMapgenPath } from '../../config/CddaConfig';
 
 describe('CataclysmMapGenParser', () => {
-  const DATA_PATH = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen';
+  const DATA_PATH = getMapgenPath();
 
   it('should parse abandoned_barn.json', () => {
     const filePath = join(DATA_PATH, 'abandoned_barn.json');

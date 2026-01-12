@@ -16,6 +16,7 @@ import { CataclysmMapGenParser } from '../mapgen/CataclysmMapGenParser';
 import { CataclysmMapGenGenerator } from '../mapgen/CataclysmMapGenGenerator';
 import { GameMap } from '../map/GameMap';
 import { Tripoint } from '../coordinates/Tripoint';
+import { getJsonPath } from '../config/CddaConfig';
 
 export interface ValidationResult {
   system: string;
@@ -41,8 +42,8 @@ export class IntegrationCLI {
   private readonly mapgenLoader: CataclysmMapGenLoader;
   private readonly paletteResolver: PaletteResolver;
 
-  constructor(dataPath: string = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json') {
-    this.dataPath = dataPath;
+  constructor(dataPath?: string) {
+    this.dataPath = dataPath ?? getJsonPath();
     this.terrainLoader = new TerrainLoader();
     this.furnitureLoader = new FurnitureLoader();
     this.trapLoader = new TrapLoader();

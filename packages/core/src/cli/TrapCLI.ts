@@ -9,16 +9,17 @@ import { join } from 'path';
 import { createInterface, Interface as ReadlineInterface } from 'readline';
 import { TrapLoader } from '../trap/TrapLoader';
 import { TrapParser, TrapJson } from '../trap/TrapParser';
+import { getJsonPath } from '../config/CddaConfig';
 
 export class TrapCLI {
   private readonly loader: TrapLoader;
   private readonly parser: TrapParser;
   private readonly dataPath: string;
 
-  constructor(dataPath: string = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json') {
+  constructor(dataPath?: string) {
     this.loader = new TrapLoader();
     this.parser = new TrapParser();
-    this.dataPath = dataPath;
+    this.dataPath = dataPath ?? getJsonPath();
   }
 
   /**

@@ -6,9 +6,10 @@ import { TerrainLoader } from '../TerrainLoader';
 import { TerrainParser } from '../TerrainParser';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { getFurnitureAndTerrainPath } from '../../config/CddaConfig';
 
 describe('Fixed Data Loading Validation', () => {
-  const DATA_PATH = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/furniture_and_terrain';
+  const DATA_PATH = getFurnitureAndTerrainPath();
 
   it('should load terrain-floors-indoor.json with fixed parser', () => {
     const filePath = join(DATA_PATH, 'terrain-floors-indoor.json');

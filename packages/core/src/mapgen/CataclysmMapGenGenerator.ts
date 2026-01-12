@@ -20,6 +20,41 @@ import { PaletteResolver } from './PaletteResolver';
 import { CataclysmMapGenLoader } from './CataclysmMapGenParser';
 
 /**
+ * 简单的线性同余随机数生成器
+ */
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+
+  /**
+   * 生成 0-1 之间的随机数
+   */
+  next(): number {
+    // 使用简单的线性同余生成器（LCG）
+    // 参数来自 glibc: a = 1103515245, c = 12345, m = 2^31
+    this.seed = (this.seed * 1103515245 + 12345) & 0x7fffffff;
+    return this.seed / 0x7fffffff;
+  }
+
+  /**
+   * 生成 0 到 max 之间的随机整数（不包括 max）
+   */
+  nextInt(max: number): number {
+    return Math.floor(this.next() * max);
+  }
+
+  /**
+   * 生成 min 到 max 之间的随机整数（包括 min 和 max）
+   */
+  nextIntRange(min: number, max: number): number {
+    return Math.floor(this.next() * (max - min + 1)) + min;
+  }
+}
+
+/**
  * Cataclysm-DDA 地图生成器
  *
  * 将 Cataclysm-DDA 的 mapgen 数据转换为 Submap
@@ -80,6 +115,9 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    * 对于大型 mapgen（>12x12），生成多个 submap 来覆盖整个区域。
    */
   override generateMultiple(context: MapGenContext): MultiSubmapResult {
+    // 创建基于种子的随机数生成器
+    const rng = new SeededRandom(context.seed);
+
     // 计算 submap 网格尺寸
     const submapGridWidth = Math.ceil(this.resolvedMapgenData.width / SUBMAP_SIZE);
     const submapGridHeight = Math.ceil(this.resolvedMapgenData.height / SUBMAP_SIZE);
@@ -89,7 +127,7 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
     // 为每个 submap 生成数据
     for (let gridY = 0; gridY < submapGridHeight; gridY++) {
       for (let gridX = 0; gridX < submapGridWidth; gridX++) {
-        const submap = this.generateSubmapAt(context, gridX, gridY);
+        const submap = this.generateSubmapAt(context, gridX, gridY, rng);
 
         // 计算全局位置
         const globalPosition = Tripoint.from(
@@ -126,12 +164,14 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    * @param context 生成上下文
    * @param gridX Submap 在 X 方向的网格索引
    * @param gridY Submap 在 Y 方向的网格索引
+   * @param rng 随机数生成器
    * @returns 生成的 Submap
    */
   private generateSubmapAt(
     context: MapGenContext,
     gridX: number,
-    gridY: number
+    gridY: number,
+    rng: SeededRandom
   ): Submap {
     // 创建空的 SOA
     let soa = MapTileSoa.createEmpty(SUBMAP_SIZE);
@@ -161,26 +201,26 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
         const nestedConfig = this.resolvedMapgenData.nested.get(char);
         if (nestedConfig && this.options?.mapgenLoader) {
           // 处理嵌套 mapgen
-          const tile = this.processNestedMapgen(nestedConfig, mapgenX, mapgenY, context);
+          const tile = this.processNestedMapgen(nestedConfig, mapgenX, mapgenY, context, rng);
           soa = soa.setTile(submapX, submapY, tile);
         } else {
           // 正常处理瓦片
-          const tile = this.mapCharToTile(char, context);
+          const tile = this.mapCharToTile(char, context, rng);
           soa = soa.setTile(submapX, submapY, tile);
         }
 
         // 处理字符映射的物品
-        const itemSpawns = this.processItemForChar(char, mapgenX, mapgenY, submapX, submapY);
+        const itemSpawns = this.processItemForChar(char, mapgenX, mapgenY, submapX, submapY, rng);
         spawns.push(...itemSpawns);
       }
     }
 
     // 处理 place_items 配置（只处理在这个 submap 范围内的）
-    const itemSpawns = this.processPlaceItemsForSubmap(startX, startY, endX, endY);
+    const itemSpawns = this.processPlaceItemsForSubmap(startX, startY, endX, endY, rng);
     spawns.push(...itemSpawns);
 
     // 处理 place_monsters 配置（只处理在这个 submap 范围内的）
-    const monsterSpawns = this.processPlaceMonstersForSubmap(startX, startY, endX, endY);
+    const monsterSpawns = this.processPlaceMonstersForSubmap(startX, startY, endX, endY, rng);
     spawns.push(...monsterSpawns);
 
     // 创建并返回 Submap
@@ -199,11 +239,12 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    *
    * @param char - 字符
    * @param context - 生成上下文
+   * @param rng - 随机数生成器
    * @returns MapTile
    */
-  private mapCharToTile(char: string, context: MapGenContext): MapTile {
-    const terrainId = this.getTerrainId(char, context);
-    const furnitureId = this.getFurnitureId(char, context);
+  private mapCharToTile(char: string, context: MapGenContext, rng: SeededRandom): MapTile {
+    const terrainId = this.getTerrainId(char, context, rng);
+    const furnitureId = this.getFurnitureId(char, context, rng);
 
     return new MapTile({
       terrain: terrainId,
@@ -219,9 +260,10 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    *
    * @param char - 字符
    * @param context - 生成上下文
+   * @param rng - 随机数生成器
    * @returns 地形 ID
    */
-  private getTerrainId(char: string, context: MapGenContext): number {
+  private getTerrainId(char: string, context: MapGenContext, rng: SeededRandom): number {
     const mapping = this.resolvedMapgenData.terrain.get(char);
 
     // 如果没有映射，使用默认填充地形
@@ -239,7 +281,7 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
 
     // 加权选项
     if (Array.isArray(mapping) && mapping.length > 0 && Array.isArray(mapping[0])) {
-      const selected = this.selectWeightedOption(mapping as WeightedOption[], context.seed);
+      const selected = this.selectWeightedOption(mapping as WeightedOption[], rng);
       return this.resolveTerrainName(selected);
     }
 
@@ -252,9 +294,10 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    *
    * @param char - 字符
    * @param context - 生成上下文
+   * @param rng - 随机数生成器
    * @returns 家具 ID 或 null
    */
-  private getFurnitureId(char: string, context: MapGenContext): number | null {
+  private getFurnitureId(char: string, context: MapGenContext, rng: SeededRandom): number | null {
     const mapping = this.resolvedMapgenData.furniture.get(char);
 
     // 如果没有映射，返回 null
@@ -269,13 +312,13 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
 
     // 加权选项
     if (Array.isArray(mapping) && mapping.length > 0 && Array.isArray(mapping[0])) {
-      const selected = this.selectWeightedOption(mapping as WeightedOption[], context.seed);
+      const selected = this.selectWeightedOption(mapping as WeightedOption[], rng);
       return this.resolveFurnitureName(selected);
     }
 
     // 数组（多个家具，随机选一个）
     if (Array.isArray(mapping) && typeof mapping[0] === 'string') {
-      const idx = Math.floor(Math.random() * mapping.length);
+      const idx = rng.nextInt(mapping.length);
       return this.resolveFurnitureName(mapping[idx] as string);
     }
 
@@ -314,6 +357,11 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    * @returns 家具 ID 或 null
    */
   private resolveFurnitureName(name: string): number | null {
+    // 特殊处理 f_null（表示"无家具"）
+    if (name === 'f_null' || name === 'null') {
+      return null;
+    }
+
     // 检查缓存
     if (this.furnitureCache.has(name)) {
       return this.furnitureCache.get(name)!;
@@ -341,10 +389,10 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    */
   private selectWeightedOption(
     options: WeightedOption[],
-    seed: number
+    rng: SeededRandom
   ): string {
     const totalWeight = options.reduce((sum, opt) => sum + opt[1], 0);
-    let random = (Math.random() * totalWeight);
+    let random = (rng.next() * totalWeight);
 
     for (const [name, weight] of options) {
       random -= weight;
@@ -364,6 +412,7 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    * @param mapgenY - 在 mapgen 中的 Y 坐标
    * @param submapX - 在 submap 中的 X 坐标
    * @param submapY - 在 submap 中的 Y 坐标
+   * @param rng - 随机数生成器
    * @returns 物品生成点数组
    */
   private processItemForChar(
@@ -371,7 +420,8 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
     mapgenX: number,
     mapgenY: number,
     submapX: number,
-    submapY: number
+    submapY: number,
+    rng: SeededRandom
   ): SpawnPoint[] {
     const spawns: SpawnPoint[] = [];
     const itemConfig = this.resolvedMapgenData.items.get(char);
@@ -382,7 +432,7 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
 
     // 检查概率
     if (itemConfig.chance !== undefined) {
-      if (Math.random() * 100 > itemConfig.chance) {
+      if (rng.next() * 100 > itemConfig.chance) {
         return spawns;
       }
     }
@@ -391,7 +441,7 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
     let count = 1;
     if (itemConfig.count) {
       const [min, max] = itemConfig.count;
-      count = Math.floor(Math.random() * (max - min + 1)) + min;
+      count = rng.nextIntRange(min, max);
     }
 
     // 创建物品生成点（使用 submap 坐标）
@@ -569,20 +619,22 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    * @param startY - Mapgen 起始 Y 坐标
    * @param endX - Mapgen 结束 X 坐标
    * @param endY - Mapgen 结束 Y 坐标
+   * @param rng - 随机数生成器
    * @returns 物品生成点数组
    */
   private processPlaceItemsForSubmap(
     startX: number,
     startY: number,
     endX: number,
-    endY: number
+    endY: number,
+    rng: SeededRandom
   ): SpawnPoint[] {
     const spawns: SpawnPoint[] = [];
 
     for (const placement of this.resolvedMapgenData.placeItems) {
       // 检查概率
       if (placement.chance !== undefined) {
-        if (Math.random() * 100 > placement.chance) {
+        if (rng.next() * 100 > placement.chance) {
           continue;
         }
       }
@@ -594,7 +646,7 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
       let count = 1;
       if (placement.count) {
         const [min, max] = placement.count;
-        count = Math.floor(Math.random() * (max - min + 1)) + min;
+        count = rng.nextIntRange(min, max);
       }
 
       // 在每个位置创建物品生成点
@@ -632,20 +684,22 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    * @param startY - Mapgen 起始 Y 坐标
    * @param endX - Mapgen 结束 X 坐标
    * @param endY - Mapgen 结束 Y 坐标
+   * @param rng - 随机数生成器
    * @return 怪物生成点数组
    */
   private processPlaceMonstersForSubmap(
     startX: number,
     startY: number,
     endX: number,
-    endY: number
+    endY: number,
+    rng: SeededRandom
   ): SpawnPoint[] {
     const spawns: SpawnPoint[] = [];
 
     for (const placement of this.resolvedMapgenData.placeMonsters) {
       // 检查概率
       if (placement.chance !== undefined) {
-        if (Math.random() * 100 > placement.chance) {
+        if (rng.next() * 100 > placement.chance) {
           continue;
         }
       }
@@ -696,13 +750,15 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
    * @param mapgenX 在 mapgen 中的 X 坐标
    * @param mapgenY 在 mapgen 中的 Y 坐标
    * @param context 生成上下文
+   * @param rng 随机数生成器
    * @returns 瓦片
    */
   private processNestedMapgen(
     nestedConfig: NestedMapConfig,
     mapgenX: number,
     mapgenY: number,
-    context: MapGenContext
+    context: MapGenContext,
+    rng: SeededRandom
   ): MapTile {
     const mapgenLoader = this.options!.mapgenLoader!;
     let chunkId: string | undefined;
@@ -717,30 +773,33 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
         chunkId = firstChunk;
       } else if (Array.isArray(firstChunk) && firstChunk.length >= 2) {
         // 加权选项 [id, weight]
-        const selected = this.selectWeightedOption(nestedConfig.chunks as WeightedOption[], context.seed);
+        const selected = this.selectWeightedOption(nestedConfig.chunks as WeightedOption[], rng);
         chunkId = selected;
       }
     } else if (nestedConfig.chunks_list && nestedConfig.chunks_list.length > 0) {
       // 从列表中随机选择
-      const idx = Math.floor(Math.random() * nestedConfig.chunks_list.length);
+      const idx = rng.nextInt(nestedConfig.chunks_list.length);
       chunkId = nestedConfig.chunks_list[idx];
     }
 
-    if (!chunkId) {
-      // 没有找到 chunk ID，返回空瓦片
-      console.warn(`Nested config has no chunk ID at (${mapgenX}, ${mapgenY})`);
+    if (!chunkId || chunkId === 'null') {
+      // 没有找到 chunk ID 或 chunk ID 是 "null"，返回空瓦片
+      // 不输出警告，因为这是正常的情况（表示"不生成任何嵌套内容"）
       // Fall back to normal character processing
-      return this.mapCharToTile(' ', context);
+      const originalChar = this.resolvedMapgenData.rows[mapgenY]?.[mapgenX] || ' ';
+      return this.mapCharToTile(originalChar, context, rng);
     }
 
     // 查找 chunk mapgen
     const chunkMapgen = mapgenLoader.get(chunkId);
     if (!chunkMapgen) {
-      console.warn(`Nested chunk not found: ${chunkId}`);
+      // 只在 chunk ID 看起来像一个有效的 mapgen ID 时才输出警告
+      if (chunkId.includes('_') || chunkId.length > 3) {
+        console.warn(`Nested chunk not found: ${chunkId}`);
+      }
       // Fall back to normal character processing using the original character
-      // We need to get the original character from the mapgen data
       const originalChar = this.resolvedMapgenData.rows[mapgenY]?.[mapgenX] || ' ';
-      return this.mapCharToTile(originalChar, context);
+      return this.mapCharToTile(originalChar, context, rng);
     }
 
     // 计算 chunk 内的相对坐标（考虑偏移）
@@ -778,7 +837,7 @@ export class CataclysmMapGenGenerator extends MapGenFunction {
       console.warn(`Nested chunk ${chunkId} coordinates (${chunkX}, ${chunkY}) out of bounds`);
       // Fall back to normal character processing
       const originalChar = this.resolvedMapgenData.rows[mapgenY]?.[mapgenX] || ' ';
-      return this.mapCharToTile(originalChar, context);
+      return this.mapCharToTile(originalChar, context, rng);
     }
 
     const extractedTile = firstSubmap.tiles!.getTile(chunkX, chunkY);

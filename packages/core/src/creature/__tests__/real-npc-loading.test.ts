@@ -9,6 +9,7 @@ import { NPCManager } from '../NPCClassLoader';
 import { NPC } from '../NPC';
 import { Tripoint } from '../../coordinates/Tripoint';
 import { GameMap } from '../../map/GameMap';
+import { getNpcsPath } from '../../config/CddaConfig';
 
 describe('Real Cataclysm-DDA NPC Data Loading', () => {
   let manager: NPCManager;
@@ -66,7 +67,7 @@ describe('Real Cataclysm-DDA NPC Data Loading', () => {
 
   it('should load NPC data from real Cataclysm-DDA file', async () => {
     const loader = manager.getLoader();
-    const npcFilePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/npcs/npc.json';
+    const npcFilePath = getNpcsPath() + '/npc.json';
 
     const npcDataMap = await loader.loadFromFile(npcFilePath);
 
@@ -91,7 +92,7 @@ describe('Real Cataclysm-DDA NPC Data Loading', () => {
 
   it('should create NPCs from loaded data', async () => {
     const loader = manager.getLoader();
-    const npcFilePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/npcs/npc.json';
+    const npcFilePath = getNpcsPath() + '/npc.json';
 
     const npcDataMap = await loader.loadFromFile(npcFilePath);
 
@@ -137,7 +138,7 @@ describe('Real Cataclysm-DDA NPC Data Loading', () => {
 
   it('should add NPCs to GameMap', async () => {
     const loader = manager.getLoader();
-    const npcFilePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/npcs/npc.json';
+    const npcFilePath = getNpcsPath() + '/npc.json';
 
     const npcDataMap = await loader.loadFromFile(npcFilePath);
 
@@ -176,7 +177,7 @@ describe('Real Cataclysm-DDA NPC Data Loading', () => {
 
   it('should test NPC attitude behavior', async () => {
     const loader = manager.getLoader();
-    const npcFilePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/npcs/npc.json';
+    const npcFilePath = getNpcsPath() + '/npc.json';
 
     const npcDataMap = await loader.loadFromFile(npcFilePath);
 
@@ -211,7 +212,7 @@ describe('Real Cataclysm-DDA NPC Data Loading', () => {
 
   it('should display NPC statistics', async () => {
     const loader = manager.getLoader();
-    const npcFilePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/npcs/npc.json';
+    const npcFilePath = getNpcsPath() + '/npc.json';
 
     const npcDataMap = await loader.loadFromFile(npcFilePath);
 
@@ -237,7 +238,7 @@ describe('Real Cataclysm-DDA NPC Data Loading', () => {
 
   it('should handle NPC with unique names', async () => {
     const loader = manager.getLoader();
-    const npcFilePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/npcs/npc.json';
+    const npcFilePath = getNpcsPath() + '/npc.json';
 
     const npcDataMap = await loader.loadFromFile(npcFilePath);
 

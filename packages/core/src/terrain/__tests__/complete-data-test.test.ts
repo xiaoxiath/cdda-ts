@@ -6,9 +6,10 @@ import { TerrainLoader } from '../TerrainLoader';
 import { FurnitureLoader } from '../../furniture/FurnitureLoader';
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { getFurnitureAndTerrainPath } from '../../config/CddaConfig';
 
 describe('Cataclysm-DDA Complete Data Loading Test', () => {
-  const DATA_PATH = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/furniture_and_terrain';
+  const DATA_PATH = getFurnitureAndTerrainPath();
 
   it('should scan and count all JSON files', () => {
     const files = readdirSync(DATA_PATH).filter(f => f.endsWith('.json'));

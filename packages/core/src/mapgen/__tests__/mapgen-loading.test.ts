@@ -6,9 +6,10 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { getMapgenPath } from '../../config/CddaConfig';
 
 describe('Cataclysm-DDA MapGen Data Loading Test', () => {
-  const DATA_PATH = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen';
+  const DATA_PATH = getMapgenPath();
 
   // 递归获取所有 JSON 文件
   function getAllJsonFiles(dir: string, baseDir = dir): string[] {

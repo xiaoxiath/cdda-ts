@@ -15,7 +15,7 @@ async function main() {
   const mapgenLoader = new CataclysmMapGenLoader();
   const paletteResolver = new PaletteResolver(mapgenLoader, { debug: true });
 
-  const dataPath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json';
+  const dataPath = '../Cataclysm-DDA/data/json';
   const paletteDir = join(dataPath, 'mapgen_palettes');
 
   // Load palettes

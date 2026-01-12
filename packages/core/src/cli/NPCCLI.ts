@@ -7,6 +7,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { createInterface, Interface as ReadlineInterface } from 'readline';
+import { getJsonPath } from '../config/CddaConfig';
 
 export interface NPCClassJson {
   type: string;
@@ -28,8 +29,8 @@ export class NPCCLI {
   private readonly dataPath: string;
   private readonly npcClasses: Map<string, NPCClassJson> = new Map();
 
-  constructor(dataPath: string = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json') {
-    this.dataPath = dataPath;
+  constructor(dataPath?: string) {
+    this.dataPath = dataPath ?? getJsonPath();
   }
 
   /**

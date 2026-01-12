@@ -270,7 +270,7 @@ ID: house_standard_2
 
 工具默认从以下路径加载数据：
 ```
-/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/
+../Cataclysm-DDA/data/json/
 ```
 
 **数据文件分布**：

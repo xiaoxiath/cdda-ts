@@ -11,7 +11,7 @@ import { TrapId } from '../trap/types';
  */
 export class MapTileSoa {
   readonly terrain: Uint16Array;
-  readonly furniture: Uint16Array;
+  readonly furniture: Uint32Array; // 使用 Uint32Array 以支持更大的家具 ID
   readonly radiation: Uint16Array;
   readonly traps: Map<string, TrapId>; // 使用 Map 存储字符串 trap ID
   readonly fields: Map<string, FieldEntry>;
@@ -20,7 +20,7 @@ export class MapTileSoa {
     const count = size * size;
 
     this.terrain = new Uint16Array(count);
-    this.furniture = new Uint16Array(count);
+    this.furniture = new Uint32Array(count);
     this.radiation = new Uint16Array(count);
     this.traps = new Map();
     this.fields = new Map();

@@ -14,6 +14,7 @@ import { GameMap } from '../../map/GameMap';
 import { Tripoint } from '../../coordinates/Tripoint';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { getMapgenPath, getMapgenPalettesPath } from '../../config/CddaConfig';
 
 describe('Real Cataclysm-DDA Mapgen Integration Tests', () => {
   let terrainLoader: TerrainLoader;
@@ -107,8 +108,8 @@ describe('Real Cataclysm-DDA Mapgen Integration Tests', () => {
     console.log('\n🏠 测试真实的 Cataclysm-DDA abandoned_barn mapgen\n');
 
     // Load real Cataclysm-DDA JSON files
-    const barnJsonPath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen/abandoned_barn.json';
-    const roofChunksPath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen/nested/rural_outdoors_nested.json';
+    const barnJsonPath = join(getMapgenPath(), 'abandoned_barn.json');
+    const roofChunksPath = join(getMapgenPath(), 'nested/rural_outdoors_nested.json');
 
     const barnData = JSON.parse(readFileSync(barnJsonPath, 'utf-8'));
     const roofChunksData = JSON.parse(readFileSync(roofChunksPath, 'utf-8'));
@@ -196,7 +197,7 @@ describe('Real Cataclysm-DDA Mapgen Integration Tests', () => {
     console.log('\n🔧 测试加载多个嵌套 chunks\n');
 
     // Load roof chunks
-    const roofChunksPath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen/nested/rural_outdoors_nested.json';
+    const roofChunksPath = join(getMapgenPath(), 'nested/rural_outdoors_nested.json');
     const roofChunksData = JSON.parse(readFileSync(roofChunksPath, 'utf-8'));
     mapgenLoader.loadArray(roofChunksData);
 
@@ -226,10 +227,10 @@ describe('Real Cataclysm-DDA Mapgen Integration Tests', () => {
 
     // Load mapgens
     const barnData = JSON.parse(
-      readFileSync('/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen/abandoned_barn.json', 'utf-8')
+      readFileSync(join(getMapgenPath(), 'abandoned_barn.json'), 'utf-8')
     );
     const roofChunksData = JSON.parse(
-      readFileSync('/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen/nested/rural_outdoors_nested.json', 'utf-8')
+      readFileSync(join(getMapgenPath(), 'nested/rural_outdoors_nested.json'), 'utf-8')
     );
 
     mapgenLoader.loadArray(roofChunksData);
@@ -299,7 +300,7 @@ describe('Real Cataclysm-DDA Mapgen Integration Tests', () => {
     console.log('\n🎨 测试调色板 mapgen\n');
 
     // Try to load a palette-based mapgen
-    const palettePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen_palettes/abandoned_barn_p.json';
+    const palettePath = join(getMapgenPalettesPath(), 'abandoned_barn_p.json');
 
     try {
       const paletteData = JSON.parse(readFileSync(palettePath, 'utf-8'));

@@ -14,6 +14,7 @@ import { GameMap } from '../../map/GameMap';
 import { Tripoint } from '../../coordinates/Tripoint';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { getFurnitureAndTerrainPath } from '../../config/CddaConfig';
 
 describe('CataclysmMapGenGenerator', () => {
   let terrainLoader: TerrainLoader;
@@ -28,8 +29,9 @@ describe('CataclysmMapGenGenerator', () => {
     trapLoader = new TrapLoader();
 
     // 从文件系统加载测试数据
-    const terrainPath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/furniture_and_terrain/terrain-floors-indoor.json';
-    const furniturePath = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/furniture_and_terrain/furniture-seats.json';
+    const basePath = getFurnitureAndTerrainPath();
+    const terrainPath = join(basePath, 'terrain-floors-indoor.json');
+    const furniturePath = join(basePath, 'furniture-seats.json');
 
     try {
       const terrainContent = readFileSync(terrainPath, 'utf-8');

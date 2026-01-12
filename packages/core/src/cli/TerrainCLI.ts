@@ -9,16 +9,17 @@ import { join } from 'path';
 import { createInterface, Interface as ReadlineInterface } from 'readline';
 import { TerrainLoader } from '../terrain/TerrainLoader';
 import { TerrainParser, TerrainJson } from '../terrain/TerrainParser';
+import { getJsonPath } from '../config/CddaConfig';
 
 export class TerrainCLI {
   private readonly loader: TerrainLoader;
   private readonly parser: TerrainParser;
   private readonly dataPath: string;
 
-  constructor(dataPath: string = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json') {
+  constructor(dataPath?: string) {
     this.loader = new TerrainLoader();
     this.parser = new TerrainParser();
-    this.dataPath = dataPath;
+    this.dataPath = dataPath ?? getJsonPath();
   }
 
   /**

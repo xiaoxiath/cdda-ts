@@ -1,0 +1,13 @@
+{
+  "$schema": "./cdda.config.schema.json",
+  "dataPath": "./Cataclysm-DDA/data",
+  "description": "Cataclysm-DDA 数据路径配置。相对路径基于项目根目录。",
+  "paths": {
+    "json": "./Cataclysm-DDA/data/json",
+    "mapgen": "./Cataclysm-DDA/data/json/mapgen",
+    "mapgenPalettes": "./Cataclysm-DDA/data/json/mapgen_palettes",
+    "furnitureAndTerrain": "./Cataclysm-DDA/data/json/furniture_and_terrain",
+    "npcs": "./Cataclysm-DDA/data/json/npcs",
+    "traps": "./Cataclysm-DDA/data/json/traps.json"
+  }
+}

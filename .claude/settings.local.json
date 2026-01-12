@@ -27,7 +27,12 @@
       "Bash(npx tsx:*)",
       "Bash(cat:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: implement copy-from inheritance and add CLI tools\n\nImplement copy-from inheritance for Terrain, Furniture, and Trap systems\nto support Cataclysm-DDA''s template-based object definitions. Added\nCLI tools for debugging and validating all game object types.\n\nChanges:\n- Added copy-from inheritance support to Terrain, Furniture, and Trap parsers\n- Implemented two-pass loading: store raw definitions, then resolve inheritance\n- Added CLI tools for Terrain, Furniture, Trap, Creature, and NPC debugging\n- Fixed validation rules to accept CDDA-specific values \\(-1, 99, etc.\\)\n- Enhanced palette resolver with better inheritance handling\n\nValidation results:\n- Terrain: 34 issues → 0 issues\n- Furniture: 351 issues → 0 issues  \n- Trap: 78 issues → 0 issues\nEOF\n\\)\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(while read file)",
+      "Bash(do sed -i '' 's|/Users/tanghao/workspace/game/Cataclysm-DDA|../Cataclysm-DDA|g' \"$file\")",
+      "Bash(echo \"已修改: $file\" done)",
+      "Bash(npx ts-node -p \"\nconst { CoreDataResolver } = require\\(''./packages/core/src/index.ts''\\);\nconst resolver = new CoreDataResolver\\(''/Users/bytedance/workspace/game/cdda-ts/Cataclysm-DDA/data/json''\\);\n\n// 尝试获取 acidia_camp_palette\ntry {\n  const palette = resolver.getPalette\\(''acidia_camp_palette''\\);\n  console.log\\(''Palette found:'', palette ? ''YES'' : ''NO''\\);\n  if \\(palette\\) {\n    console.log\\(''Palette items:'', palette.item.length\\);\n    console.log\\(''First few items:'', JSON.stringify\\(palette.item.slice\\(0, 5\\), null, 2\\)\\);\n  }\n} catch \\(e\\) {\n  console.log\\(''Error:'', e.message\\);\n}\n\")",
+      "Bash(npx ts-node:*)"
     ]
   }
 }

@@ -9,16 +9,17 @@ import { join } from 'path';
 import { createInterface, Interface as ReadlineInterface } from 'readline';
 import { FurnitureLoader } from '../furniture/FurnitureLoader';
 import { FurnitureParser, FurnitureJson } from '../furniture/FurnitureParser';
+import { getJsonPath } from '../config/CddaConfig';
 
 export class FurnitureCLI {
   private readonly loader: FurnitureLoader;
   private readonly parser: FurnitureParser;
   private readonly dataPath: string;
 
-  constructor(dataPath: string = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json') {
+  constructor(dataPath?: string) {
     this.loader = new FurnitureLoader();
     this.parser = new FurnitureParser();
-    this.dataPath = dataPath;
+    this.dataPath = dataPath ?? getJsonPath();
   }
 
   /**

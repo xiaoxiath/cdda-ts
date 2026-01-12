@@ -6,20 +6,18 @@
 
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import { createInterface, Interface as ReadlineInterface } from 'readline';
 import { GameMap } from '../map/GameMap';
 import { Submap, SUBMAP_SIZE } from '../map/Submap';
 import { Tripoint } from '../coordinates/Tripoint';
-import { CataclysmMapGenParser } from '../mapgen/CataclysmMapGenParser';
+import { CataclysmMapGenParser, CataclysmMapGenLoader } from '../mapgen/CataclysmMapGenParser';
 import { CataclysmMapGenGenerator } from '../mapgen/CataclysmMapGenGenerator';
+import { PaletteResolver } from '../mapgen/PaletteResolver';
 import { MapGenContext } from '../mapgen/MapGenFunction';
 import { TerrainLoader } from '../terrain/TerrainLoader';
 import { FurnitureLoader } from '../furniture/FurnitureLoader';
 import { TrapLoader } from '../trap/TrapLoader';
-import { SimpleRenderer } from '../cli/SimpleRenderer';
-import { Avatar } from '../creature/Avatar';
-import { GameState, GameLoop } from '../game';
-import { SimpleInputHandler } from './SimpleInputHandler';
-import { createInterface } from 'readline';
+import { getMapgenPath, getJsonPath, getMapgenPalettesPath } from '../config/CddaConfig';
 
 /**
  * MapGen 选项
@@ -35,26 +33,27 @@ interface MapGenOption {
  * MapGen CLI 工具
  */
 export class MapGenCLI {
-  private mapgenDataPath: string;
-  private dataPath: string;
-  private rl: ReturnType<typeof createInterface>;
-  private terrainLoader: TerrainLoader;
-  private furnitureLoader: FurnitureLoader;
-  private trapLoader: TrapLoader;
+  private readonly mapgenDataPath: string;
+  private readonly dataPath: string;
+  private readonly palettePath: string;
+  private readonly terrainLoader: TerrainLoader;
+  private readonly furnitureLoader: FurnitureLoader;
+  private readonly trapLoader: TrapLoader;
+  private readonly mapgenLoader: CataclysmMapGenLoader;
+  private readonly paletteResolver: PaletteResolver;
 
   constructor(
-    mapgenDataPath: string = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json/mapgen',
-    dataPath: string = '/Users/tanghao/workspace/game/Cataclysm-DDA/data/json'
+    mapgenDataPath?: string,
+    dataPath?: string
   ) {
-    this.mapgenDataPath = mapgenDataPath;
-    this.dataPath = dataPath;
+    this.mapgenDataPath = mapgenDataPath ?? getMapgenPath();
+    this.dataPath = dataPath ?? getJsonPath();
+    this.palettePath = getMapgenPalettesPath();
     this.terrainLoader = new TerrainLoader();
     this.furnitureLoader = new FurnitureLoader();
     this.trapLoader = new TrapLoader();
-    this.rl = createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
+    this.mapgenLoader = new CataclysmMapGenLoader();
+    this.paletteResolver = new PaletteResolver(this.mapgenLoader);
   }
 
   /**
@@ -115,40 +114,95 @@ export class MapGenCLI {
       console.log(`  ⚠️  陷阱文件不存在: ${trapPath}`);
     }
 
+    // 加载调色板数据
+    await this.loadPalettes();
+
     console.log('\n✅ 数据加载完成\n');
+  }
+
+  /**
+   * 加载调色板数据
+   */
+  private async loadPalettes(): Promise<void> {
+    console.log('  加载调色板数据...');
+
+    if (!existsSync(this.palettePath)) {
+      console.log(`  ⚠️  调色板目录不存在: ${this.palettePath}`);
+      return;
+    }
+
+    const paletteFiles = readdirSync(this.palettePath).filter(f => f.endsWith('.json'));
+    let totalPalettes = 0;
+
+    for (const file of paletteFiles) {
+      try {
+        const filePath = join(this.palettePath, file);
+        const content = readFileSync(filePath, 'utf-8');
+        const json = JSON.parse(content);
+        const jsonArray = Array.isArray(json) ? json : [json];
+
+        // 加载调色板（使用 mapgenLoader 的 loadArray 方法）
+        const beforeCount = this.mapgenLoader.paletteCount();
+        this.mapgenLoader.loadArray(jsonArray);
+        const afterCount = this.mapgenLoader.paletteCount();
+        totalPalettes += (afterCount - beforeCount);
+      } catch (error) {
+        console.log(`    ⚠️  跳过 ${file}: ${error}`);
+      }
+    }
+
+    console.log(`  ✅ 从 ${paletteFiles.length} 个文件加载了 ${totalPalettes} 个调色板定义`);
   }
 
   /**
    * 启动 CLI
    */
   async run(): Promise<void> {
-    console.clear();
     console.log('╔═══════════════════════════════════════════════════════════╗');
     console.log('║       Cataclysm-DDA MapGen 调试工具                        ║');
-    console.log('╚═══════════════════════════════════════════════════════════╝');
-    console.log('');
+    console.log('╚═══════════════════════════════════════════════════════════╝\n');
 
-    try {
-      // 初始化数据加载器
-      await this.initializeLoaders();
+    // 初始化数据加载器
+    await this.initializeLoaders();
 
-      // 加载所有 mapgen 数据
-      const mapgens = await this.loadAllMapGens();
+    // 加载所有 mapgen 数据
+    const mapgens = await this.loadAllMapGens();
 
-      if (mapgens.length === 0) {
-        console.log('❌ 没有找到任何 mapgen 数据');
-        console.log(`   路径: ${this.mapgenDataPath}`);
-        await this.waitForEnter();
-        return;
-      }
-
-      // 显示菜单
-      await this.showMainMenu(mapgens);
-    } catch (error) {
-      console.error('❌ 错误:', error);
-    } finally {
-      this.rl.close();
+    if (mapgens.length === 0) {
+      console.log('❌ 没有找到任何 mapgen 数据');
+      console.log(`   路径: ${this.mapgenDataPath}`);
+      return;
     }
+
+    // 主菜单
+    await this.mainMenu(mapgens);
+  }
+
+  /**
+   * 递归扫描目录中的所有 JSON 文件
+   */
+  private scanJsonFilesRecursively(dir: string, basePath: string = ''): string[] {
+    const jsonFiles: string[] = [];
+
+    if (!existsSync(dir)) {
+      return jsonFiles;
+    }
+
+    const entries = readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      const relativePath = basePath ? join(basePath, entry.name) : entry.name;
+
+      if (entry.isDirectory()) {
+        // 递归扫描子目录
+        jsonFiles.push(...this.scanJsonFilesRecursively(fullPath, relativePath));
+      } else if (entry.isFile() && entry.name.endsWith('.json')) {
+        jsonFiles.push(relativePath);
+      }
+    }
+
+    return jsonFiles;
   }
 
   /**
@@ -164,74 +218,95 @@ export class MapGenCLI {
       return mapgens;
     }
 
-    const files = readdirSync(this.mapgenDataPath);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
-
+    // 递归扫描所有子目录
+    const jsonFiles = this.scanJsonFilesRecursively(this.mapgenDataPath);
     console.log(`✅ 找到 ${jsonFiles.length} 个 JSON 文件`);
 
-    for (const file of jsonFiles) {
+    for (const relativePath of jsonFiles) {
       try {
-        const filePath = join(this.mapgenDataPath, file);
+        const filePath = join(this.mapgenDataPath, relativePath);
         const content = readFileSync(filePath, 'utf-8');
         const data = JSON.parse(content);
 
-        // 提取所有 mapgen 对象
+        // 提取所有对象
         const jsonArray = Array.isArray(data) ? data : [data];
 
         for (const obj of jsonArray) {
-          if (obj.type === 'mapgen' || obj.omm || obj.object || obj.method) {
-            const id = obj.id || obj.omm || `${file}_${mapgens.length}`;
-            const name = obj.name || obj.id || obj.omm || file;
+          // 处理调色板定义
+          if (obj.type === 'palette') {
+            // 将调色板加载到 mapgenLoader 中
+            this.mapgenLoader.loadArray([obj]);
+          }
+          // 处理 mapgen 定义
+          else if (obj.type === 'mapgen' || obj.omm || obj.object || obj.method) {
+            const id = obj.id || obj.omm || `${relativePath}_${mapgens.length}`;
+            const name = obj.name || obj.id || obj.omm || relativePath;
 
-            mapgens.push({
+            const mapgenOption = {
               id,
               name,
               path: filePath,
               object: obj,
-            });
+            };
+
+            mapgens.push(mapgenOption);
+
+            // 同时加载到 mapgenLoader 中，以便嵌套 mapgen 可以找到它们
+            this.mapgenLoader.load(obj);
           }
         }
       } catch (error) {
-        console.log(`⚠️  跳过文件 ${file}: ${error}`);
+        console.log(`⚠️  跳过文件 ${relativePath}: ${error}`);
       }
     }
 
-    console.log(`✅ 加载了 ${mapgens.length} 个 mapgen 定义\n`);
+    console.log(`✅ 加载了 ${mapgens.length} 个 mapgen 定义`);
+    console.log(`✅ mapgenLoader 中有 ${this.mapgenLoader.size()} 个 mapgen`);
+    console.log(`✅ mapgenLoader 中有 ${this.mapgenLoader.paletteCount()} 个调色板\n`);
     return mapgens;
   }
 
   /**
    * 显示主菜单
    */
-  private async showMainMenu(mapgens: MapGenOption[]): Promise<void> {
-    while (true) {
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log('主菜单:');
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log('1. 列出所有 mapgen');
-      console.log('2. 搜索 mapgen');
-      console.log('3. 随机选择一个 mapgen');
-      console.log('4. 按索引选择 mapgen');
-      console.log('0. 退出');
-      console.log('═══════════════════════════════════════════════════════════');
+  private showMainMenu(): void {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('主菜单:');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('1. 列出所有 mapgen');
+    console.log('2. 搜索 mapgen');
+    console.log('3. 随机选择一个 mapgen');
+    console.log('4. 按索引选择 mapgen');
+    console.log('0. 退出');
+    console.log('═══════════════════════════════════════════════════════════\n');
+  }
 
-      const choice = await this.question('请选择操作 [0-4]: ');
+  /**
+   * 主菜单
+   */
+  private async mainMenu(mapgens: MapGenOption[]): Promise<void> {
+    const rl = this.createReadline();
+
+    while (true) {
+      this.showMainMenu();
+      const choice = await this.prompt(rl, '请选择操作 [0-4]: ');
 
       switch (choice.trim()) {
         case '1':
-          await this.listMapGens(mapgens);
+          await this.listMapGens(mapgens, rl);
           break;
         case '2':
-          await this.searchMapGens(mapgens);
+          await this.searchMapGens(mapgens, rl);
           break;
         case '3':
-          await this.selectRandomMapGen(mapgens);
+          await this.selectRandomMapGen(mapgens, rl);
           break;
         case '4':
-          await this.selectByIndex(mapgens);
+          await this.selectByIndex(mapgens, rl);
           break;
         case '0':
           console.log('\n👋 再见！');
+          rl.close();
           return;
         default:
           console.log('\n❌ 无效的选择\n');
@@ -242,7 +317,7 @@ export class MapGenCLI {
   /**
    * 列出所有 mapgen
    */
-  private async listMapGens(mapgens: MapGenOption[]): Promise<void> {
+  private async listMapGens(mapgens: MapGenOption[], rl: ReadlineInterface): Promise<void> {
     console.log('\n═══════════════════════════════════════════════════════════');
     console.log(`所有 Mapgen (${mapgens.length} 个):`);
     console.log('═══════════════════════════════════════════════════════════\n');
@@ -269,7 +344,7 @@ export class MapGenCLI {
       console.log('操作: [n]下一页 [p]上一页 [编号]查看详情 [0]返回');
       console.log('═══════════════════════════════════════════════════════════');
 
-      const input = (await this.question('\n请选择: ')).trim().toLowerCase();
+      const input = (await this.prompt(rl, '\n请选择: ')).trim().toLowerCase();
 
       if (input === 'n') {
         if (currentPage < totalPages - 1) currentPage++;
@@ -280,7 +355,7 @@ export class MapGenCLI {
       } else {
         const idx = parseInt(input);
         if (!isNaN(idx) && idx >= 0 && idx < mapgens.length) {
-          await this.viewMapGen(mapgens[idx]);
+          await this.viewMapGen(mapgens[idx], rl);
         } else {
           console.log('\n❌ 无效的编号\n');
         }
@@ -291,12 +366,12 @@ export class MapGenCLI {
   /**
    * 搜索 mapgen
    */
-  private async searchMapGens(mapgens: MapGenOption[]): Promise<void> {
+  private async searchMapGens(mapgens: MapGenOption[], rl: ReadlineInterface): Promise<void> {
     console.log('\n═══════════════════════════════════════════════════════════');
     console.log('搜索 Mapgen');
     console.log('═══════════════════════════════════════════════════════════');
 
-    const keyword = await this.question('\n请输入搜索关键词: ');
+    const keyword = await this.prompt(rl, '\n请输入搜索关键词: ');
 
     const results = mapgens.filter(mg =>
       mg.name.toLowerCase().includes(keyword.toLowerCase()) ||
@@ -307,7 +382,6 @@ export class MapGenCLI {
 
     if (results.length === 0) {
       console.log('没有找到匹配的 mapgen\n');
-      await this.waitForEnter();
       return;
     }
 
@@ -316,44 +390,42 @@ export class MapGenCLI {
       console.log(`[${i}] ${mg.name} (ID: ${mg.id})`);
     }
 
-    const input = await this.question('\n请输入编号查看详情 [0-${results.length - 1}] (或按 0 返回): ');
+    const input = await this.prompt(rl, '\n请输入编号查看详情 [0-${results.length - 1}] (或按 0 返回): ');
     const idx = parseInt(input);
 
     if (!isNaN(idx) && idx >= 0 && idx < results.length) {
-      await this.viewMapGen(results[idx]);
+      await this.viewMapGen(results[idx], rl);
     }
   }
 
   /**
    * 随机选择 mapgen
    */
-  private async selectRandomMapGen(mapgens: MapGenOption[]): Promise<void> {
+  private async selectRandomMapGen(mapgens: MapGenOption[], rl: ReadlineInterface): Promise<void> {
     const idx = Math.floor(Math.random() * mapgens.length);
     console.log(`\n🎲 随机选择了: ${mapgens[idx].name}\n`);
-    await this.viewMapGen(mapgens[idx]);
+    await this.viewMapGen(mapgens[idx], rl);
   }
 
   /**
    * 按索引选择 mapgen
    */
-  private async selectByIndex(mapgens: MapGenOption[]): Promise<void> {
-    const input = await this.question(`\n请输入索引 [0-${mapgens.length - 1}]: `);
+  private async selectByIndex(mapgens: MapGenOption[], rl: ReadlineInterface): Promise<void> {
+    const input = await this.prompt(rl, `\n请输入索引 [0-${mapgens.length - 1}]: `);
     const idx = parseInt(input);
 
     if (isNaN(idx) || idx < 0 || idx >= mapgens.length) {
       console.log('\n❌ 无效的索引\n');
-      await this.waitForEnter();
       return;
     }
 
-    await this.viewMapGen(mapgens[idx]);
+    await this.viewMapGen(mapgens[idx], rl);
   }
 
   /**
    * 查看 mapgen 详情并生成地图
    */
-  private async viewMapGen(mapgen: MapGenOption): Promise<void> {
-    console.clear();
+  private async viewMapGen(mapgen: MapGenOption, rl: ReadlineInterface): Promise<void> {
     console.log('╔═══════════════════════════════════════════════════════════╗');
     console.log('║ Mapgen 详情                                                ║');
     console.log('╚═══════════════════════════════════════════════════════════╝');
@@ -376,19 +448,19 @@ export class MapGenCLI {
     console.log('0. 返回');
     console.log('═══════════════════════════════════════════════════════════');
 
-    const choice = await this.question('\n请选择: ');
+    const choice = await this.prompt(rl, '\n请选择: ');
 
     if (choice === '1') {
-      await this.generateAndDisplayMap(mapgen);
+      await this.generateAndDisplayMap(mapgen, rl);
     } else if (choice === '2') {
-      await this.generateMultipleSamples(mapgen);
+      await this.generateMultipleSamples(mapgen, rl);
     }
   }
 
   /**
    * 生成并显示地图
    */
-  private async generateAndDisplayMap(mapgen: MapGenOption): Promise<void> {
+  private async generateAndDisplayMap(mapgen: MapGenOption, rl: ReadlineInterface): Promise<void> {
     console.log('\n🔄 正在生成地图...\n');
 
     try {
@@ -398,12 +470,19 @@ export class MapGenCLI {
       console.log(`   OM Terrain: ${parsed.omTerrain || 'N/A'}`);
       console.log(`   尺寸: ${parsed.width}x${parsed.height}`);
 
-      // 创建生成器实例
-      const generator = new CataclysmMapGenGenerator(parsed, {
-        terrain: this.terrainLoader,
-        furniture: this.furnitureLoader,
-        trap: this.trapLoader,
-      });
+      // 创建生成器实例（传入 paletteResolver 和 mapgenLoader）
+      const generator = new CataclysmMapGenGenerator(
+        parsed,
+        {
+          terrain: this.terrainLoader,
+          furniture: this.furnitureLoader,
+          trap: this.trapLoader,
+        },
+        {
+          paletteResolver: this.paletteResolver,
+          mapgenLoader: this.mapgenLoader,
+        }
+      );
 
       // 生成地图
       const map = new GameMap();
@@ -415,39 +494,80 @@ export class MapGenCLI {
         depth: 0,
       };
 
-      const result = generator.generate(context);
+      // 使用 generateMultiple 获取所有 submap
+      const multiResult = generator.generateMultiple(context);
       console.log('✅ 生成成功');
+      console.log(`   Submap 网格: ${multiResult.submapGridWidth}x${multiResult.submapGridHeight}`);
 
-      // 显示生成的子地图
+      // 显示生成的地图
       console.log('\n═══════════════════════════════════════════════════════════');
       console.log('生成的地图:');
       console.log('═══════════════════════════════════════════════════════════\n');
-      this.displaySubmap(result);
+      this.displayMultiSubmap(multiResult);
 
       console.log('\n═══════════════════════════════════════════════════════════');
       console.log('操作: [0]返回 [r]重新生成 [s]保存');
       console.log('═══════════════════════════════════════════════════════════');
 
-      const choice = (await this.question('\n请选择: ')).toLowerCase();
+      const choice = (await this.prompt(rl, '\n请选择: ')).toLowerCase();
 
       if (choice === 'r') {
-        await this.generateAndDisplayMap(mapgen);
+        await this.generateAndDisplayMap(mapgen, rl);
       } else if (choice === 's') {
         console.log('\n⚠️  保存功能待实现');
-        await this.waitForEnter();
       }
     } catch (error) {
       console.error('\n❌ 生成失败:', error);
       console.error(error);
-      await this.waitForEnter();
+    }
+  }
+
+  /**
+   * 显示多个 submap（组合成完整地图）
+   */
+  private displayMultiSubmap(multiResult: { submaps: Array<{ submap: Submap; position: any }>; submapGridWidth: number; submapGridHeight: number }): void {
+    const { submaps, submapGridWidth, submapGridHeight } = multiResult;
+
+    // 遍历每一行的 submap
+    for (let gridY = 0; gridY < submapGridHeight; gridY++) {
+      // 每个 submap 有 SUBMAP_SIZE 行
+      for (let rowInSubmap = 0; rowInSubmap < SUBMAP_SIZE; rowInSubmap++) {
+        let line = '';
+
+        // 遍历这一行的所有 submap
+        for (let gridX = 0; gridX < submapGridWidth; gridX++) {
+          const submapIndex = gridY * submapGridWidth + gridX;
+          const submapResult = submaps[submapIndex];
+
+          if (submapResult) {
+            const submap = submapResult.submap;
+
+            // 获取这个 submap 的当前行
+            for (let x = 0; x < SUBMAP_SIZE; x++) {
+              const terrain = submap.getTerrain(x, rowInSubmap);
+              line += this.getTerrainChar(terrain, x, rowInSubmap, submap);
+            }
+          } else {
+            // 如果没有 submap，填充空格
+            line += ' '.repeat(SUBMAP_SIZE);
+          }
+        }
+
+        console.log(line);
+      }
+
+      // 在 submap 行之间添加分隔线（可选）
+      if (gridY < submapGridHeight - 1) {
+        // console.log(''); // 空行分隔
+      }
     }
   }
 
   /**
    * 生成多个样本
    */
-  private async generateMultipleSamples(mapgen: MapGenOption): Promise<void> {
-    const countInput = await this.question('\n请输入生成数量 [1-10]: ');
+  private async generateMultipleSamples(mapgen: MapGenOption, rl: ReadlineInterface): Promise<void> {
+    const countInput = await this.prompt(rl, '\n请输入生成数量 [1-10]: ');
     const count = Math.min(10, Math.max(1, parseInt(countInput) || 3));
 
     console.log(`\n🔄 正在生成 ${count} 个样本...\n`);
@@ -456,12 +576,19 @@ export class MapGenCLI {
       // 解析 mapgen
       const parsed = CataclysmMapGenParser.parse(mapgen.object);
 
-      // 创建生成器实例
-      const generator = new CataclysmMapGenGenerator(parsed, {
-        terrain: this.terrainLoader,
-        furniture: this.furnitureLoader,
-        trap: this.trapLoader,
-      });
+      // 创建生成器实例（传入 paletteResolver 和 mapgenLoader）
+      const generator = new CataclysmMapGenGenerator(
+        parsed,
+        {
+          terrain: this.terrainLoader,
+          furniture: this.furnitureLoader,
+          trap: this.trapLoader,
+        },
+        {
+          paletteResolver: this.paletteResolver,
+          mapgenLoader: this.mapgenLoader,
+        }
+      );
 
       for (let i = 0; i < count; i++) {
         console.log(`\n─────────────────────────────────────────────────────────`);
@@ -477,16 +604,15 @@ export class MapGenCLI {
           depth: 0,
         };
 
-        const result = generator.generate(context);
-        this.displaySubmap(result);
+        // 使用 generateMultiple 获取所有 submap
+        const multiResult = generator.generateMultiple(context);
+        this.displayMultiSubmap(multiResult);
       }
 
       console.log('\n═══════════════════════════════════════════════════════════');
-      await this.waitForEnter();
     } catch (error) {
       console.error('\n❌ 生成失败:', error);
       console.error(error);
-      await this.waitForEnter();
     }
   }
 
@@ -520,33 +646,51 @@ export class MapGenCLI {
     // 然后检查地形
     const terrain = this.terrainLoader.getData().get(terrainId);
     if (terrain) {
-      return terrain.symbol;
+      // 处理伪地形（符号是空格的占位地形）
+      let symbol = terrain.symbol;
+      if (symbol === ' ' || symbol === '\t' || symbol === '') {
+        // 根据地形 id 或 name 来决定显示字符
+        if (terrain.idString?.startsWith('t_region_')) {
+          // 区域地形使用点号显示
+          symbol = '.';
+        } else if (terrain.name === 'pseudo terrain') {
+          // 伪地形显示为点号
+          symbol = '.';
+        } else {
+          // 其他空格符号显示为空格（表示真正的空）
+          symbol = ' ';
+        }
+      }
+      return symbol;
     }
 
     // 回退到简单的映射
     const chars: Record<number, string> = {
-      0: '.', // 默认地板
+      0: ' ', // t_null 显示为空格
       1: '#', // 默认墙
     };
-    return chars[terrainId] || '?';
+    return chars[terrainId] || ' ';
   }
 
   /**
-   * 提问用户
+   * 创建 readline 接口
    */
-  private question(query: string): Promise<string> {
-    return new Promise(resolve => {
-      this.rl.question(query, (answer) => {
-        resolve(answer);
-      });
+  private createReadline(): ReadlineInterface {
+    return createInterface({
+      input: process.stdin,
+      output: process.stdout,
     });
   }
 
   /**
-   * 等待用户按 Enter
+   * 提示用户输入
    */
-  private async waitForEnter(): Promise<void> {
-    await this.question('\n按 Enter 继续...');
+  private prompt(rl: ReadlineInterface, question: string): Promise<string> {
+    return new Promise((resolve) => {
+      rl.question(question, (answer: string) => {
+        resolve(answer);
+      });
+    });
   }
 }
 
@@ -555,10 +699,12 @@ export class MapGenCLI {
  */
 async function main() {
   const cli = new MapGenCLI();
-  await cli.run();
+  try {
+    await cli.run();
+  } catch (error) {
+    console.error('错误:', error);
+    process.exit(1);
+  }
 }
 
-// 如果直接运行此文件
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
-}
+main();

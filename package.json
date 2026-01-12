@@ -5,7 +5,8 @@
   "type": "module",
   "description": "TypeScript + React implementation of Cataclysm-DDA",
   "scripts": {
-    "dev": "pnpm --filter ui-graphics dev",
+    "dev": "pnpm --filter @cataclym-web/web dev",
+    "dev:web": "pnpm --filter @cataclym-web/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "test:watch": "pnpm -r test:watch",

@@ -155,9 +155,12 @@ export class GameMap {
    */
   setTile(pos: Tripoint, tile: MapTile): GameMap {
     const sm = posToSubmap(pos);
-    const submap = this.getSubmapAt(sm);
+    let submap = this.getSubmapAt(sm);
 
-    if (!submap) return this;
+    // 如果 submap 不存在，创建一个新的空 submap
+    if (!submap) {
+      submap = Submap.createEmpty();
+    }
 
     const localX = ((pos.x % SUBMAP_SIZE) + SUBMAP_SIZE) % SUBMAP_SIZE;
     const localY = ((pos.y % SUBMAP_SIZE) + SUBMAP_SIZE) % SUBMAP_SIZE;
@@ -188,6 +191,20 @@ export class GameMap {
     const newSubmap = submap.setTerrain(localX, localY, terrainId);
 
     return this.setSubmapAt(sm, newSubmap);
+  }
+
+  /**
+   * 获取地图宽度（以 tile 为单位）
+   */
+  getWidth(): number {
+    return MAP_SIZE_X;
+  }
+
+  /**
+   * 获取地图高度（以 tile 为单位）
+   */
+  getHeight(): number {
+    return MAP_SIZE_Y;
   }
 
   /**
@@ -412,6 +429,24 @@ export class GameMap {
     const newCreatures = new Map(this.creatures);
     newCreatures.set(creatureId, updatedCreature);
     return this.setProperty('creatures', newCreatures);
+  }
+
+  // ========== 工厂方法 ==========
+
+  /**
+   * 创建一个新的 GameMap 实例
+   *
+   * @param origin - 地图原点坐标
+   * @returns 新的 GameMap 实例
+   */
+  static create(origin: Tripoint): GameMap {
+    return new GameMap({
+      grid: GameMap.createEmptyGrid(),
+      absSub: origin,
+      caches: new Map(),
+      mapBuffer: new MapBuffer(),
+      creatures: new Map(),
+    });
   }
 
   // ========== 克隆方法 ==========

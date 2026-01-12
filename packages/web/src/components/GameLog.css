@@ -1,0 +1,104 @@
+/* ========================================
+   GameLog Component - 游戏消息日志
+   ======================================== */
+
+.game-log {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.game-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.game-log-header h3 {
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.message-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.game-log-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+  background: var(--bg-primary);
+}
+
+.game-log-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.game-log-message {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+  transition: all var(--transition-fast);
+}
+
+.game-log-message:last-child {
+  color: var(--text-primary);
+  font-weight: 500;
+  background: var(--accent-subtle);
+  border-left: 2px solid var(--accent-primary);
+  padding-left: calc(var(--spacing-sm) - 2px);
+}
+
+/* 消息类型颜色 */
+.game-log-message.info {
+  color: var(--text-secondary);
+}
+
+.game-log-message.success {
+  color: var(--status-success);
+}
+
+.game-log-message.warning {
+  color: var(--status-warning);
+}
+
+.game-log-message.danger {
+  color: var(--status-danger);
+}
+
+.game-log-message.combat {
+  color: #e57373;
+}
+
+.game-log-message.loot {
+  color: #ffd54f;
+}
+
+.game-log-message.system {
+  color: var(--text-tertiary);
+  font-style: italic;
+}

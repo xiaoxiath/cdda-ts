@@ -32,7 +32,15 @@
       "Bash(do sed -i '' 's|/Users/tanghao/workspace/game/Cataclysm-DDA|../Cataclysm-DDA|g' \"$file\")",
       "Bash(echo \"已修改: $file\" done)",
       "Bash(npx ts-node -p \"\nconst { CoreDataResolver } = require\\(''./packages/core/src/index.ts''\\);\nconst resolver = new CoreDataResolver\\(''/Users/bytedance/workspace/game/cdda-ts/Cataclysm-DDA/data/json''\\);\n\n// 尝试获取 acidia_camp_palette\ntry {\n  const palette = resolver.getPalette\\(''acidia_camp_palette''\\);\n  console.log\\(''Palette found:'', palette ? ''YES'' : ''NO''\\);\n  if \\(palette\\) {\n    console.log\\(''Palette items:'', palette.item.length\\);\n    console.log\\(''First few items:'', JSON.stringify\\(palette.item.slice\\(0, 5\\), null, 2\\)\\);\n  }\n} catch \\(e\\) {\n  console.log\\(''Error:'', e.message\\);\n}\n\")",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(du:*)",
+      "Bash(cloc:*)",
+      "Bash(wc:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "WebSearch"
     ]
   }
 }

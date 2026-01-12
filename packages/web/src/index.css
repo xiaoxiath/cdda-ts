@@ -1,0 +1,16 @@
+/* ========================================
+   Global Styles - Cataclysm-DDA Web
+   ======================================== */
+
+/* Canvas 样式 */
+canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* 禁用文本选择 */
+.ui-no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}

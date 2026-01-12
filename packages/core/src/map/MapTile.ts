@@ -1,7 +1,5 @@
-import { TerrainId } from '../terrain/types';
-import { FurnitureId } from '../furniture/types';
+import { TerrainId, FurnitureId, TrapId } from '../coordinates/types';
 import { FieldEntry } from '../field/FieldEntry';
-import { TrapId } from '../trap/types';
 
 /**
  * 地图瓦片属性

@@ -1,0 +1,128 @@
+/* ========================================
+   GameStats Component - 玩家状态面板
+   ======================================== */
+
+.game-stats {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.game-stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.game-stats-header h3 {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.game-stats-content {
+  font-size: 12px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background-color var(--transition-fast);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.stat-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 12px;
+}
+
+.stat-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--border-subtle),
+    transparent
+  );
+  margin: var(--spacing-md) 0;
+}
+
+.stat-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* 属性值颜色修饰 */
+.stat-value.highlight {
+  color: var(--accent-primary);
+}
+
+.stat-value.good {
+  color: var(--status-success);
+}
+
+.stat-value.bad {
+  color: var(--status-danger);
+}
+
+.stat-value.medium {
+  color: var(--status-warning);
+}
+
+/* 属性条样式（用于扩展） */
+.stat-bar-container {
+  width: 100%;
+  margin-top: var(--spacing-xs);
+}
+
+.stat-bar {
+  height: 4px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: var(--radius-sm);
+  transition: width var(--transition-normal);
+}
+
+.stat-bar-fill.health-high {
+  background: var(--health-high);
+}
+
+.stat-bar-fill.health-medium {
+  background: var(--health-medium);
+}
+
+.stat-bar-fill.health-low {
+  background: var(--health-low);
+}

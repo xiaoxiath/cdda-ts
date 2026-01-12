@@ -414,7 +414,10 @@ export class IntegrationCLI {
       if (!terrainSymbols.has(t.symbol)) {
         terrainSymbols.set(t.symbol, []);
       }
-      terrainSymbols.get(t.symbol)!.push(t.idString);
+      const symbols = terrainSymbols.get(t.symbol);
+      if (symbols && t.idString) {
+        symbols.push(t.idString);
+      }
     });
 
     const furnitureSymbols = new Map<string, string[]>();
@@ -422,14 +425,20 @@ export class IntegrationCLI {
       if (!furnitureSymbols.has(f.symbol)) {
         furnitureSymbols.set(f.symbol, []);
       }
-      furnitureSymbols.get(f.symbol)!.push(f.idString);
+      const symbols = furnitureSymbols.get(f.symbol);
+      if (symbols && f.idString) {
+        symbols.push(f.idString);
+      }
     });
 
     // 找出冲突的符号
     const conflicts: string[] = [];
     terrainSymbols.forEach((ids, symbol) => {
       if (furnitureSymbols.has(symbol)) {
-        conflicts.push(`符号 '${symbol}' 同时被地形 (${ids.join(', ')}) 和家具 (${furnitureSymbols.get(symbol)!.join(', ')}) 使用`);
+        const furnitureIds = furnitureSymbols.get(symbol);
+        if (furnitureIds) {
+          conflicts.push(`符号 '${symbol}' 同时被地形 (${ids.join(', ')}) 和家具 (${furnitureIds.join(', ')}) 使用`);
+        }
       }
     });
 

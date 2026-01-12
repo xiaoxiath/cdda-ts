@@ -73,7 +73,7 @@ export class Point {
    * 创建原点
    */
   static origin(): Point {
-    return Point.ZERO;
+    return Point.ZERO as Point;
   }
 
   /**
@@ -146,13 +146,13 @@ export class Point {
    * @returns 旋转后的点
    */
   rotate(turns: number, dim: Point = Point.from(1, 1)): Point {
-    let ret = this;
+    let ret: Point = this;
     // Normalize turns to 0-3
     turns = ((turns % 4) + 4) % 4;
     for (let i = 0; i < turns; i++) {
       // 顺时针旋转 90 度: (x, y) -> (y, dim.y - 1 - x)
       const tmp = ret.y;
-      ret = ret.set('x', tmp).set('y', dim.y - 1 - ret.x);
+      ret = ret.set('x', tmp).set('y', dim.y - 1 - ret.x) as Point;
     }
     return ret;
   }

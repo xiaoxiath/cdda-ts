@@ -87,9 +87,6 @@ export interface BashInfo {
   bashBelow?: boolean; // 同时破坏下方的地形
   collapseRadius?: number; // 支撑的帐篷半径
   tentCenters?: string[]; // 帐篷中心家具列表
-
-  // 兼容旧数据
-  furniture?: string[]; // 已废弃，使用 dropGroup 代替
 }
 
 /**

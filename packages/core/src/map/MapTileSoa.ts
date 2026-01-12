@@ -100,8 +100,6 @@ export class MapTileSoa {
     return new MapTile({
       terrain: this.terrain[idx],
       furniture: this.furniture[idx] || null,
-      lum: this.lum[idx],
-      items: tileItems,
       radiation: this.radiation[idx],
       field: this.fields.get(key) || null,
       trap: this.traps.get(key) || null,
@@ -141,12 +139,12 @@ export class MapTileSoa {
     // 更新值
     newSoa.terrain[idx] = tile.terrain;
     newSoa.furniture[idx] = tile.furniture || 0;
-    newSoa.lum[idx] = tile.lum || 0;
     newSoa.radiation[idx] = tile.radiation;
 
-    // 更新 items
-    if (tile.items && tile.items.length > 0) {
-      newSoa.items.set(key, tile.items);
+    // 更新 items (从 MapTileSoa 的 items map 获取)
+    const tileItems = this.items.get(key) || [];
+    if (tileItems.length > 0) {
+      newSoa.items.set(key, tileItems);
     } else {
       newSoa.items.delete(key);
     }

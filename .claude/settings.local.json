@@ -41,7 +41,8 @@
       "Bash(lsof:*)",
       "Bash(curl:*)",
       "WebSearch",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

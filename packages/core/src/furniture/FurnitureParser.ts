@@ -211,9 +211,8 @@ export class FurnitureParser {
       strMax: obj.str_max,
       soundChance: obj.sound_chance,
       quiet: obj.quiet,
-      furniture: obj.furniture || [],
+      furn: obj.furniture?.[0] || undefined, // 取第一个家具 ID
       items: obj.items,
-      ter: typeof obj.ter === 'number' ? obj.ter : undefined,
       successMsg: obj.success_msg,
       failMsg: obj.fail_msg,
       destroyOnly: obj.destroy_only,
@@ -225,12 +224,11 @@ export class FurnitureParser {
    */
   private parseDeconstruct(obj: FurnitureDeconstructJson): FurnitureDeconstructInfo {
     return {
-      furniture: obj.furniture || '',
+      furn: obj.furniture || undefined, // 改用 furn 属性
       items: obj.items,
       ter: typeof obj.ter === 'number' ? obj.ter : undefined,
       time: obj.time,
       simple: obj.simple,
-      furnitureOnly: obj.furniture_only,
     };
   }
 

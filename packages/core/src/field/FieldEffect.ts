@@ -81,7 +81,7 @@ export class FieldEffect {
   constructor(props?: Partial<FieldEffectProps>) {
     const defaults: FieldEffectProps = {
       effectId: '' as EffectTypeId,
-      bodyPart: 'torso' as BodyPartId,
+      bodyPart: 0, // BodyPartId.TORSO
       minDuration: 0,
       maxDuration: 0,
       intensity: 1,
@@ -242,7 +242,7 @@ export class FieldEffect {
  * 一个场类型可以产生多个效果
  */
 export class FieldEffectList {
-  private readonly _effects: FieldEffect[];
+  private _effects: readonly FieldEffect[];
 
   constructor(effects: FieldEffect[] = []) {
     this._effects = Object.freeze([...effects]);

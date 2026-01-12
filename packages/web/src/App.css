@@ -373,8 +373,11 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding: var(--spacing-md);
   border-bottom: none;
   background: var(--bg-secondary);
+  /* 确保有最小高度 */
+  min-height: 150px;
 }
 
 /* ========================================

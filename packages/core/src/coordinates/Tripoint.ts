@@ -84,7 +84,7 @@ export class Tripoint {
    * 创建原点
    */
   static origin(): Tripoint {
-    return Tripoint.ZERO;
+    return Tripoint.ZERO as Tripoint;
   }
 
   /**

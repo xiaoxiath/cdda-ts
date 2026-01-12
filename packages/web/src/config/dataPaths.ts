@@ -47,7 +47,8 @@ export const CORE_FURNITURE_FILES = [
  * 获取当前环境的数据路径
  */
 export function getDataPath(): string {
-  return import.meta.env.DEV ? DATA_PATHS.development : DATA_PATHS.production
+  // @ts-ignore - Vite 环境变量
+  return import.meta.env?.DEV ? DATA_PATHS.development : DATA_PATHS.production
 }
 
 /**

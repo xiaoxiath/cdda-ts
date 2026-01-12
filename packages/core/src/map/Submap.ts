@@ -417,10 +417,10 @@ export class Submap {
     // 旋转生成点位置
     const rotatedSpawns = this.spawns.map((spawn) => ({
       ...spawn,
-      position: Point.from({
-        x: spawn.position.x,
-        y: spawn.position.y,
-      }).rotate(turns, Point.from(dim.x, dim.y)),
+      position: Point.from(
+        spawn.position.x,
+        spawn.position.y,
+      ).rotate(turns, Point.from(dim.x, dim.y)),
     }));
 
     return this.set('tiles', newTiles).set('spawns', rotatedSpawns);
@@ -469,7 +469,7 @@ export class Submap {
 
       return {
         ...spawn,
-        position: Point.from({ x: newX, y: newY }),
+        position: Point.from(newX, newY),
       };
     });
 

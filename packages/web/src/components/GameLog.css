@@ -6,7 +6,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 100%;
+  /* 使用 min-height 确保至少有一定的显示空间 */
+  min-height: 120px;
 }
 
 .game-log-header {
@@ -43,6 +44,8 @@
   overflow-y: auto;
   padding: var(--spacing-sm);
   background: var(--bg-primary);
+  /* 确保有一个最小高度 */
+  min-height: 80px;
 }
 
 .game-log-empty {

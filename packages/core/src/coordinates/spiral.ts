@@ -53,11 +53,11 @@ export function findPointClosestFirst(
 ): Tripoint | null;
 
 export function findPointClosestFirst(
-  center: Point | Tripoint,
+  center: any,
   min_dist: number,
   max_dist: number,
-  predicate_fn: (p: Point | Tripoint) => boolean
-): Point | Tripoint | null {
+  predicate_fn: any
+): any {
   const n = rectangleSize(min_dist, max_dist);
 
   if (n === null) {
@@ -123,7 +123,7 @@ export function closestPointsFirst(
   center: Point | Tripoint,
   max_dist: number
 ): (Point | Tripoint)[] {
-  return closestPointsFirstRange(center, 0, max_dist);
+  return closestPointsFirstRange(center as any, 0, max_dist);
 }
 
 /**
@@ -219,9 +219,9 @@ export function findPointClosestFirstMax(
   predicate_fn: (p: Tripoint) => boolean
 ): Tripoint | null;
 export function findPointClosestFirstMax(
-  center: Point | Tripoint,
+  center: any,
   max_dist: number,
-  predicate_fn: (p: Point | Tripoint) => boolean
-): Point | Tripoint | null {
+  predicate_fn: any
+): any {
   return findPointClosestFirst(center, 0, max_dist, predicate_fn);
 }

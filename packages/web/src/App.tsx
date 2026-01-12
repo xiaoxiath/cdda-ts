@@ -2,9 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import GameCanvas from './components/GameCanvas'
 import GameLog from './components/GameLog'
 import GameStats from './components/GameStats'
+import Sidebar from './components/Sidebar'
 import { useGame } from './hooks/useGame'
 import { configStorage } from './services/configStorage'
+import { getUIConfigLoader } from './ui/UIConfigLoader'
 import './App.css'
+import './ui/widgets/WidgetRenderer.css'
 
 // 分辨率选项类型
 interface ResolutionOption {
@@ -40,6 +43,7 @@ function App() {
   const [showResolutionMenu, setShowResolutionMenu] = useState(false)
   const [canvasKey, setCanvasKey] = useState(0) // 用于强制重新渲染 canvas
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [uiConfigLoaded, setUiConfigLoaded] = useState(false)
 
   const currentResolution = RESOLUTIONS[resolutionIndex]
   const isFullscreen = currentResolution.fullscreen === true
@@ -65,6 +69,22 @@ function App() {
       }
     }
     loadConfig()
+  }, [])
+
+  // 加载 UI 配置
+  useEffect(() => {
+    const loadUIConfig = async () => {
+      try {
+        const loader = getUIConfigLoader()
+        // 注意：实际运行时需要配置正确的数据路径
+        // await loader.loadAll({ dataPath: './Cataclysm-DDA' })
+        setUiConfigLoaded(true)
+      } catch (err) {
+        console.error('Failed to load UI config:', err)
+        setUiConfigLoaded(true)
+      }
+    }
+    loadUIConfig()
   }, [])
 
   // 保存配置
@@ -139,7 +159,7 @@ function App() {
     )
   }
 
-  if (!isReady || !configLoaded) {
+  if (!isReady || !configLoaded || !uiConfigLoaded) {
     return (
       <div className="loading-screen">
         <div className="loading-content">
@@ -218,10 +238,8 @@ function App() {
 
         {/* 右侧信息面板 */}
         <aside className={`app-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}>
-          {/* 角色状态 */}
-          <div className="sidebar-section">
-            <GameStats gameState={gameState} />
-          </div>
+          {/* 新的 UI Widget 系统侧边栏 */}
+          <Sidebar gameState={gameState} collapsed={sidebarCollapsed} />
 
           {/* 消息日志 */}
           <div className="sidebar-section sidebar-section-flex">

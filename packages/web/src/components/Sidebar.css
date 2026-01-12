@@ -1,0 +1,195 @@
+/* ========================================
+   Sidebar 组件样式
+   ======================================== */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* 使用 flex: 0 1 auto 让它根据内容自动调整高度 */
+  flex: 0 1 auto;
+  max-height: 60%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+  gap: 8px;
+}
+
+.sidebar-default {
+  padding: 12px;
+}
+
+.sidebar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-tertiary);
+  gap: 12px;
+}
+
+.sidebar-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sidebar Sections */
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+}
+
+/* HP Display */
+.hp-display {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hp-label {
+  font-size: 9px;
+  font-weight: 600;
+  width: 40px;
+  color: var(--text-tertiary);
+}
+
+.hp-bar {
+  height: 8px;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  min-width: 20px;
+}
+
+.hp-value {
+  font-size: 9px;
+  font-weight: 600;
+  font-family: 'SF Mono', monospace;
+  width: 24px;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.stat-value {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'SF Mono', monospace;
+  color: var(--text-primary);
+}
+
+/* Needs List */
+.needs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.need-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.need-label {
+  font-size: 10px;
+  font-weight: 500;
+  width: 40px;
+  color: var(--text-secondary);
+}
+
+.need-bar-container {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.need-bar {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Stamina Bar */
+.stamina-bar {
+  height: 12px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.stamina-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #8bc34a);
+  transition: width 0.3s ease;
+}
+
+.stamina-value {
+  font-size: 10px;
+  font-weight: 500;
+  font-family: 'SF Mono', monospace;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 2px;
+  display: block;
+}

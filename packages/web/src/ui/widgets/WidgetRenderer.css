@@ -1,0 +1,127 @@
+/* ========================================
+   UI Widget 系统 - 样式定义
+   ======================================== */
+
+/* Widget 基础容器 */
+.ui-widget {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 11px;
+}
+
+.ui-widget-padding {
+  padding: 1px 4px;
+}
+
+.ui-widget-label {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+.ui-widget-content {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Text Widget */
+.ui-text {
+  white-space: nowrap;
+}
+
+.ui-text-empty {
+  color: var(--text-muted);
+}
+
+/* Number Widget */
+.ui-number {
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ui-number-empty {
+  color: var(--text-muted);
+}
+
+/* Graph Widget */
+.ui-graph {
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0;
+}
+
+.ui-graph-empty {
+  color: var(--text-muted);
+}
+
+/* Layout Widget */
+.ui-layout {
+  display: flex;
+}
+
+.ui-layout > .ui-widget {
+  flex-shrink: 0;
+}
+
+/* Clause Widget */
+.ui-clause {
+  font-weight: 500;
+}
+
+.ui-clause-empty {
+  color: var(--text-muted);
+}
+
+/* Widget 变体 */
+.ui-widget-text {
+  display: inline;
+}
+
+.ui-widget-number {
+  display: inline;
+}
+
+.ui-widget-graph {
+  display: inline-flex;
+}
+
+.ui-widget-layout {
+  display: flex;
+}
+
+/* 颜色类 */
+.ui-color-red { color: #ff0000; }
+.ui-color-light-red { color: #ff4444; }
+.ui-color-yellow { color: #ffff00; }
+.ui-color-green { color: #00aa00; }
+.ui-color-light-green { color: #00ff00; }
+.ui-color-blue { color: #0000ff; }
+.ui-color-light-blue { color: #4444ff; }
+.ui-color-cyan { color: #00ffff; }
+.ui-color-magenta { color: #ff00ff; }
+.ui-color-brown { color: #aa5500; }
+.ui-color-pink { color: #ff55aa; }
+.ui-color-white { color: #ffffff; }
+.ui-color-light-gray { color: #aaaaaa; }
+.ui-color-dark-gray { color: #555555; }
+.ui-color-black { color: #000000; }
+
+/* 健康状态颜色 */
+.ui-hp-critical { color: #ff0000; }
+.ui-hp-bad { color: #ff8000; }
+.ui-hp-warning { color: #ffff00; }
+.ui-hp-good { color: #00ff00; }
+.ui-hp-excellent { color: #00ff00; }
+
+/* 需求状态颜色 */
+.ui-need-starving { color: #ff0000; }
+.ui-need-hungry { color: #ff8000; }
+.ui-need-full { color: #00ff00; }
+.ui-need-thirsty { color: #ff0000; }
+.ui-need-dehydrated { color: #ff0000; }
+.ui-need-tired { color: #ff8000; }
+.ui-need-exhausted { color: #ff0000; }

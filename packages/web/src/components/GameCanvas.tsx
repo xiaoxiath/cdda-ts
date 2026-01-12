@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react'
-import { GameRenderer } from '../renderers'
+import { useEffect, useRef, useCallback, useState } from 'react'
+import { GameRenderer, TileRenderer } from '../renderers'
 import { keyboardEventToAction } from '../utils'
 import type { GameState, DisplayMode } from '../types'
 
@@ -14,7 +14,8 @@ interface GameCanvasProps {
  */
 export default function GameCanvas({ gameState, displayMode, onInput }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const rendererRef = useRef<GameRenderer | null>(null)
+  const rendererRef = useRef<GameRenderer | TileRenderer | null>(null)
+  const [tileRendererLoaded, setTileRendererLoaded] = useState(false)
 
   /**
    * 初始化渲染器
@@ -23,12 +24,27 @@ export default function GameCanvas({ gameState, displayMode, onInput }: GameCanv
     const canvas = canvasRef.current
     if (!canvas) return
 
-    // 创建渲染器
-    const renderer = new GameRenderer(canvas, {
-      tileSize: 16,
-      fontSize: 14,
-      fontFamily: '"Courier New", monospace',
-    })
+    // 根据显示模式创建不同的渲染器
+    let renderer: GameRenderer | TileRenderer
+
+    if (displayMode === 'tile') {
+      // Tile 模式
+      renderer = new TileRenderer(canvas, 32)
+      // 注意：图块集加载在浏览器环境中需要特殊处理
+      // 由于浏览器安全限制，无法直接访问本地文件系统
+      // 当前实现将使用 ASCII 降级模式
+      console.log('[GameCanvas] Tile mode enabled, but tileset loading requires a proxy server')
+      setTileRendererLoaded(false)
+    } else {
+      // ASCII 模式
+      renderer = new GameRenderer(canvas, {
+        tileSize: 16,
+        fontSize: 14,
+        fontFamily: '"Courier New", monospace',
+      })
+      setTileRendererLoaded(false)
+    }
+
     rendererRef.current = renderer
 
     // 设置 Canvas 大小
@@ -65,13 +81,6 @@ export default function GameCanvas({ gameState, displayMode, onInput }: GameCanv
       resizeObserver.disconnect()
       renderer.destroy()
     }
-  }, [])
-
-  /**
-   * 更新显示模式
-   */
-  useEffect(() => {
-    rendererRef.current?.setDisplayMode(displayMode)
   }, [displayMode])
 
   /**
@@ -86,17 +95,21 @@ export default function GameCanvas({ gameState, displayMode, onInput }: GameCanv
 
     if (!map || !playerPos) return
 
+    // 如果是 Tile 模式，设置地图
+    if (displayMode === 'tile' && renderer instanceof TileRenderer) {
+      renderer.setMap(map)
+    }
+
     // 渲染地图
     renderer.render(map, playerPos)
 
-    // 渲染玩家
-    renderer.renderPlayer(playerPos, playerPos)
+    // 如果是 ASCII 模式，额外渲染玩家
+    if (displayMode === 'ascii' && renderer instanceof GameRenderer) {
+      renderer.renderPlayer(playerPos, playerPos)
 
-    // 打印可视区域地图数据（用于调试）
-    renderer.dumpVisibleMap(map, playerPos)
-
-    // 打印可视区域原始数据（用于调试）
-    // renderer.dumpVisibleRawData(map, playerPos)
+      // 打印可视区域地图数据（用于调试）
+      renderer.dumpVisibleMap(map, playerPos)
+    }
   }, [gameState, displayMode])
 
   /**
@@ -120,5 +133,8 @@ export default function GameCanvas({ gameState, displayMode, onInput }: GameCanv
     }
   }, [handleKeyDown])
 
-  return <canvas ref={canvasRef} className="game-canvas" />
+  return (
+    <canvas ref={canvasRef} className={`game-canvas game-canvas-${displayMode}`} />
+  )
 }
+

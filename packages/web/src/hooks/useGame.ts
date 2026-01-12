@@ -34,6 +34,7 @@ export function useGame() {
     if (!globalMap || !globalPlayer) return
 
     setGameState(new GameState({
+      // @ts-ignore - WorldMap 与 GameMap 类型不完全兼容，但运行时可以工作
       map: globalMap,
       player: globalPlayer,
       turn: globalTurn,

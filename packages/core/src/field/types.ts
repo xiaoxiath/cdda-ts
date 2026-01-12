@@ -23,6 +23,8 @@ export enum FieldPhase {
   GAS = 'gas',
   /** 等离子体 */
   PLASMA = 'plasma',
+  /** 能量 */
+  ENERGY = 'energy',
 }
 
 /**

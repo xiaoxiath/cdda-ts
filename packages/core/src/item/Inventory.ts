@@ -460,4 +460,176 @@ export class Inventory {
 
     return inventory;
   }
+
+  // ============ 集成功能 ============
+
+  /**
+   * 使用物品栏中的物品
+   *
+   * @param item 要使用的物品
+   * @param context 使用上下文
+   * @returns 新的物品栏和使用结果
+   */
+  useItem(
+    item: Item,
+    context: any
+  ): { inventory: Inventory; result: any; consumedItem?: Item } {
+    // 动态导入 use-methods 避免循环依赖
+    const { executeUseMethod, getAvailableUseMethods } = require('./use-methods');
+
+    const methods = getAvailableUseMethods(item, context);
+    if (methods.length === 0) {
+      return {
+        inventory: this,
+        result: { success: false, error: 'NO_USE_METHOD', message: '此物品没有可用的使用方法' },
+      };
+    }
+
+    // 执行第一个可用方法
+    const result = methods[0].use(item, context);
+
+    // 如果物品被消耗（resultingItem 为 undefined），从物品栏移除
+    if (result.resultingItem === undefined) {
+      return {
+        inventory: this.removeItem(item),
+        result,
+        consumedItem: item,
+      };
+    }
+
+    // 否则更新物品栏中的物品
+    const pos = this.findPosition(item);
+    if (pos !== undefined) {
+      const stack = this.stacks.get(pos);
+      const index = stack?.indexOf(item);
+      if (index !== undefined && index >= 0) {
+        const newStack = stack?.set(index, result.resultingItem);
+        const newInventory = new Inventory({
+          ...this.getState(),
+          stacks: this.stacks.set(pos, newStack!),
+        });
+        return {
+          inventory: newInventory,
+          result,
+        };
+      }
+    }
+
+    return {
+      inventory: this,
+      result,
+    };
+  }
+
+  /**
+   * 消耗指定数量的物品
+   *
+   * @param typeId 物品类型 ID
+   * @param count 要消耗的数量
+   * @returns 新的物品栏和消耗的物品
+   */
+  consumeItems(typeId: string, count: number): {
+    inventory: Inventory;
+    consumed: Item[];
+    remaining: number;
+  } {
+    const consumed: Item[] = [];
+    let inventory = this;
+    let remaining = count;
+
+    // 查找所有匹配的物品
+    const items = this.findAllItems(item => item.id === typeId);
+
+    for (const item of items) {
+      if (remaining <= 0) break;
+
+      inventory = inventory.removeItem(item);
+      consumed.push(item);
+      remaining--;
+    }
+
+    return {
+      inventory,
+      consumed,
+      remaining,
+    };
+  }
+
+  /**
+   * 查找可用的弹药用于装填
+   *
+   * @param gun 枪械
+   * @returns 找到的弹药物品，如果没有则返回 undefined
+   */
+  findAmmoFor(gun: Item): Item | undefined {
+    // 动态导入 weapon 模块
+    const { isAmmoCompatible } = require('./weapon');
+
+    for (const stack of this.stacks) {
+      for (const item of stack) {
+        if (isAmmoCompatible(gun, item)) {
+          return item;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * 使用物品栏中的弹药装填枪械
+   *
+   * @param gun 枪械
+   * @returns 新的物品栏和装填结果
+   */
+  reloadGun(gun: Item): {
+    inventory: Inventory;
+    gun: Item;
+    ammo?: Item;
+    success: boolean;
+  } {
+    const ammo = this.findAmmoFor(gun);
+
+    if (!ammo) {
+      return {
+        inventory: this,
+        gun,
+        success: false,
+      };
+    }
+
+    // 动态导入 weapon 模块
+    const { reloadGun: reloadGunFunc, calculateReloadAmount } = require('./weapon');
+
+    const reloadResult = reloadGunFunc(gun, ammo);
+    const amount = calculateReloadAmount(gun, ammo);
+
+    // 消耗弹药物品
+    const consumeResult = this.consumeItems(ammo.id, 1);
+
+    return {
+      inventory: consumeResult.inventory,
+      gun: reloadResult.gun,
+      ammo: consumeResult.consumed[0],
+      success: true,
+    };
+  }
+
+  /**
+   * 获取物品栏摘要信息
+   */
+  getSummary(): {
+    itemCount: number;
+    stackCount: number;
+    weight: number;
+    volume: number;
+    isFull: boolean;
+  } {
+    return {
+      itemCount: this.getItemCount(),
+      stackCount: this.getStackCount(),
+      weight: this.getWeight(),
+      volume: this.getVolume(),
+      isFull: this.isFull(),
+    };
+  }
 }

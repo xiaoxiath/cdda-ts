@@ -28,7 +28,8 @@ class MockMeleeCharacter implements MeleeCombatCharacter {
     private critMultiplier: number = 2.0,
     private blockChance: number = 0,
     private dodgeChance: number = 0,
-    private skillLevels: Map<string, number> = Map()
+    private skillLevels: Map<string, number> = Map(),
+    private resistances: Resistances = Resistances.create()
   ) {}
 
   getMeleeAccuracy(): number {
@@ -77,6 +78,31 @@ class MockMeleeCharacter implements MeleeCombatCharacter {
 
   getTargetableBodyParts?(): BodyPartId[] {
     return ['TORSO' as BodyPartId, 'HEAD' as BodyPartId, 'ARM_L' as BodyPartId];
+  }
+
+  getBodyPartHP() {
+    return Map<string, any>({
+      TORSO: {
+        bodyPart: 'TORSO' as BodyPartId,
+        currentHP: 50,
+        maxHP: 50,
+        baseHP: 50,
+      },
+      HEAD: {
+        bodyPart: 'HEAD' as BodyPartId,
+        currentHP: 30,
+        maxHP: 30,
+        baseHP: 30,
+      },
+    });
+  }
+
+  isImmuneTo() {
+    return false;
+  }
+
+  getResistances() {
+    return this.resistances;
   }
 }
 

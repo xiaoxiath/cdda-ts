@@ -431,6 +431,285 @@ export const gunFireMethod: UseMethodDefinition = {
   },
 };
 
+/**
+ * 容器打开方法
+ */
+export const containerOpenMethod: UseMethodDefinition = {
+  type: UseMethodType.CONTAINER_OPEN,
+  id: 'container_open',
+  name: '打开',
+  description: '打开容器',
+  baseTime: 100,
+
+  canUse(item: Item): boolean {
+    return item.contents !== undefined && !item.contents.isEmpty();
+  },
+
+  use(item: Item, context: UseContext): UseResult {
+    // 容器已经通过 contents 访问，这里只是确认操作
+    const contents = item.contents;
+    const itemCount = contents.getItemCount();
+
+    return {
+      success: true,
+      resultingItem: item,
+      timeTaken: 100,
+      message: `你打开了 ${item.name}，里面有 ${itemCount} 个物品`,
+    };
+  },
+};
+
+/**
+ * 容器关闭方法
+ */
+export const containerCloseMethod: UseMethodDefinition = {
+  type: UseMethodType.CONTAINER_CLOSE,
+  id: 'container_close',
+  name: '关闭',
+  description: '关闭容器',
+  baseTime: 50,
+
+  canUse(item: Item): boolean {
+    return item.contents !== undefined;
+  },
+
+  use(item: Item, context: UseContext): UseResult {
+    return {
+      success: true,
+      resultingItem: item,
+      timeTaken: 50,
+      message: `你关闭了 ${item.name}`,
+    };
+  },
+};
+
+/**
+ * 书籍阅读方法
+ */
+export const bookReadMethod: UseMethodDefinition = {
+  type: UseMethodType.BOOK_READ,
+  id: 'book_read',
+  name: '阅读',
+  description: '阅读书籍',
+  baseTime: 1000, // 阅读需要较长时间
+
+  canUse(item: Item, context: UseContext): boolean {
+    if (!item.isBook()) {
+      return false;
+    }
+    const book = item.type.book;
+    if (!book) {
+      return false;
+    }
+
+    // 检查技能要求
+    if (book.requiredSkill && context.user) {
+      const userSkill = context.user.skills?.get(book.requiredSkill);
+      const requiredLevel = book.requiredLevel || 0;
+      if ((userSkill || 0) < requiredLevel) {
+        return false;
+      }
+    }
+
+    return true;
+  },
+
+  use(item: Item, context: UseContext): UseResult {
+    const book = item.type.book;
+    if (!book) {
+      return {
+        success: false,
+        timeTaken: 0,
+        message: '这不是一本书',
+        error: 'NOT_BOOK',
+      };
+    }
+
+    const sideEffects: UseSideEffect[] = [];
+
+    // 添加技能经验
+    if (book.skill && book.skillLevel) {
+      sideEffects.push({
+        type: 'skill',
+        id: book.skill,
+        value: book.skillLevel,
+        message: `你阅读了 ${item.name}，获得了 ${book.skill} 经验`,
+      });
+    }
+
+    // 添加效果
+    if (book.effect) {
+      sideEffects.push({
+        type: 'effect',
+        id: book.effect,
+        message: `你获得了 ${book.effect} 效果`,
+      });
+    }
+
+    return {
+      success: true,
+      resultingItem: item,
+      timeTaken: 1000,
+      message: `你阅读了 ${item.name}`,
+      sideEffects,
+    };
+  },
+};
+
+/**
+ * 护甲穿戴方法
+ */
+export const armorWearMethod: UseMethodDefinition = {
+  type: UseMethodType.ARMOR_WEAR,
+  id: 'armor_wear',
+  name: '穿戴',
+  description: '穿戴护甲',
+  baseTime: 200,
+
+  canUse(item: Item, context: UseContext): boolean {
+    if (!item.isArmor()) {
+      return false;
+    }
+
+    // 检查是否已经穿戴
+    if (item.active) {
+      return false;
+    }
+
+    // 检查是否损坏
+    if (item.isBroken()) {
+      return false;
+    }
+
+    // TODO: 检查角色是否已经穿戴了同部位护甲
+    return true;
+  },
+
+  use(item: Item, context: UseContext): UseResult {
+    const armor = item.type.armor;
+    if (!armor) {
+      return {
+        success: false,
+        timeTaken: 0,
+        message: '这不是护甲',
+        error: 'NOT_ARMOR',
+      };
+    }
+
+    const sideEffects: UseSideEffect[] = [];
+
+    // 添加防护效果（作为副作用记录，实际应用由角色系统处理）
+    sideEffects.push({
+      type: 'effect',
+      id: 'armor_protection',
+      message: `你穿戴了 ${item.name}，获得防护`,
+    });
+
+    // 激活护甲
+    const newItem = item.setActive(true);
+
+    return {
+      success: true,
+      resultingItem: newItem,
+      timeTaken: 200,
+      message: `你穿戴了 ${item.name}`,
+      sideEffects,
+    };
+  },
+};
+
+/**
+ * 护甲脱下方法
+ */
+export const armorRemoveMethod: UseMethodDefinition = {
+  type: UseMethodType.ARMOR_REMOVE,
+  id: 'armor_remove',
+  name: '脱下',
+  description: '脱下护甲',
+  baseTime: 150,
+
+  canUse(item: Item, context: UseContext): boolean {
+    if (!item.isArmor()) {
+      return false;
+    }
+
+    // 检查是否已穿戴
+    return item.active;
+  },
+
+  use(item: Item, context: UseContext): UseResult {
+    // 关闭护甲
+    const newItem = item.setActive(false);
+
+    return {
+      success: true,
+      resultingItem: newItem,
+      timeTaken: 150,
+      message: `你脱下了 ${item.name}`,
+    };
+  },
+};
+
+/**
+ * 武器攻击方法
+ */
+export const weaponAttackMethod: UseMethodDefinition = {
+  type: UseMethodType.WEAPON_ATTACK,
+  id: 'weapon_attack',
+  name: '攻击',
+  description: '使用武器攻击',
+  baseTime: 80,
+
+  canUse(item: Item, context: UseContext): boolean {
+    // 检查是否是武器
+    if (!item.isWeapon()) {
+      return false;
+    }
+
+    // 枪械需要检查弹药
+    if (item.isGun()) {
+      return item.charges > 0;
+    }
+
+    // 近战武器检查是否损坏
+    return !item.isBroken();
+  },
+
+  use(item: Item, context: UseContext): UseResult {
+    const sideEffects: UseSideEffect[] = [];
+    let newItem = item;
+
+    // 计算伤害
+    let damage = 0;
+    if (item.isGun()) {
+      // 枪械伤害
+      damage = item.type.gun?.rangedDamage || 0;
+      // 消耗弹药
+      const ammoPerShot = item.type.gun?.ammoToFire || 1;
+      newItem = item.set('charges', Math.max(0, item.charges - ammoPerShot));
+    } else {
+      // 近战伤害（使用 generic 插槽的 bash/cut 值）
+      const generic = item.type.generic;
+      damage = Math.max(generic?.bash || 0, generic?.cut || 0);
+    }
+
+    // 记录伤害副作用
+    sideEffects.push({
+      type: 'damage',
+      value: damage,
+      message: `你使用 ${item.name} 造成 ${damage} 点伤害`,
+    });
+
+    return {
+      success: true,
+      resultingItem: newItem,
+      timeTaken: 80,
+      message: `你使用 ${item.name} 进行攻击`,
+      sideEffects,
+    };
+  },
+};
+
 // 注册所有内置使用方法
 export function registerBuiltinUseMethods(): void {
   useMethodRegistry.register(eatMethod);
@@ -438,6 +717,12 @@ export function registerBuiltinUseMethods(): void {
   useMethodRegistry.register(toolActivateMethod);
   useMethodRegistry.register(toolUseMethod);
   useMethodRegistry.register(gunFireMethod);
+  useMethodRegistry.register(containerOpenMethod);
+  useMethodRegistry.register(containerCloseMethod);
+  useMethodRegistry.register(bookReadMethod);
+  useMethodRegistry.register(armorWearMethod);
+  useMethodRegistry.register(armorRemoveMethod);
+  useMethodRegistry.register(weaponAttackMethod);
 }
 
 // ============ 使用方法辅助函数 ============
@@ -517,4 +802,101 @@ export function canUseItem(item: Item, context: UseContext): boolean {
  */
 export function getUseTime(item: Item, method: UseMethodDefinition): number {
   return method.baseTime || 100;
+}
+
+// ============ 副作用应用 ============
+
+/**
+ * 应用使用物品的副作用
+ *
+ * 此函数将 UseSideEffect 数组应用到角色上
+ * 实际的修改由角色系统处理，这里提供接口
+ */
+export interface ApplySideEffectsResult {
+  /** 是否成功应用 */
+  success: boolean;
+  /** 应用的副作用数量 */
+  appliedCount: number;
+  /** 失败的副作用 */
+  failedEffects: Array<{ effect: UseSideEffect; reason: string }>;
+  /** 生成的消息 */
+  messages: string[];
+}
+
+export function applySideEffects(
+  sideEffects: UseSideEffect[],
+  context: UseContext
+): ApplySideEffectsResult {
+  const result: ApplySideEffectsResult = {
+    success: true,
+    appliedCount: 0,
+    failedEffects: [],
+    messages: [],
+  };
+
+  if (!sideEffects || sideEffects.length === 0) {
+    return result;
+  }
+
+  // TODO: 当角色系统实现后，这里会实际应用效果
+  // 目前只记录消息和返回结果
+  for (const effect of sideEffects) {
+    try {
+      switch (effect.type) {
+        case 'effect':
+          // 应用效果（需要角色系统）
+          result.appliedCount++;
+          if (effect.message) {
+            result.messages.push(effect.message);
+          }
+          break;
+
+        case 'skill':
+          // 添加技能经验（需要角色系统）
+          result.appliedCount++;
+          if (effect.message) {
+            result.messages.push(effect.message);
+          }
+          break;
+
+        case 'stat':
+          // 修改属性（需要角色系统）
+          result.appliedCount++;
+          if (effect.message) {
+            result.messages.push(effect.message);
+          }
+          break;
+
+        case 'damage':
+          // 造成伤害（需要战斗系统）
+          result.appliedCount++;
+          if (effect.message) {
+            result.messages.push(effect.message);
+          }
+          break;
+
+        case 'heal':
+          // 治疗（需要角色系统）
+          result.appliedCount++;
+          if (effect.message) {
+            result.messages.push(effect.message);
+          }
+          break;
+
+        default:
+          result.failedEffects.push({
+            effect,
+            reason: `未知的效果类型: ${(effect as any).type}`,
+          });
+      }
+    } catch (error) {
+      result.failedEffects.push({
+        effect,
+        reason: String(error),
+      });
+    }
+  }
+
+  result.success = result.failedEffects.length === 0;
+  return result;
 }

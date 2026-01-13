@@ -195,6 +195,11 @@ export class EffectManager {
       return this;
     }
 
+    // 检查效果免疫
+    if (this.isImmuneToEffect(id)) {
+      return this; // 免疫，不应用效果
+    }
+
     const existing = this.effects.get(id);
 
     // 如果已存在且可堆叠，增加堆叠
@@ -205,8 +210,16 @@ export class EffectManager {
       });
     }
 
-    // 否则创建新效果
-    const newEffect = Effect.create(definition, currentTime);
+    // 计算持续时间减少（由其他效果影响）
+    const modifiedDuration = this.calculateEffectDuration(id, definition);
+
+    // 如果持续时间减少到0，不应用效果
+    if (modifiedDuration <= 0) {
+      return this;
+    }
+
+    // 创建新效果
+    const newEffect = Effect.withDuration(definition, modifiedDuration, currentTime);
     return new EffectManager({
       effects: this.effects.set(id, newEffect),
       definitions: this.definitions,
@@ -450,6 +463,43 @@ export class EffectManager {
     return addModifier * (1 + multiplyModifier);
   }
 
+  /**
+   * 获取护甲修正
+   *
+   * @param damageType 伤害类型（可选，'all' 表示所有类型）
+   * @param bodyPart 身体部位（可选，用于局部护甲加成）
+   * @returns 护甲修正值
+   */
+  getArmorModifier(damageType: string = 'all', bodyPart?: BodyPartId): number {
+    let addModifier = 0;
+    let bonusModifier = 0;
+    let multiplyModifier = 0;
+
+    for (const effect of this.effects.valueSeq()) {
+      if (!effect.isActive) continue;
+
+      // 如果指定了身体部位，检查效果是否影响该部位
+      if (bodyPart && !effect.affectsBodyPart(bodyPart)) {
+        continue;
+      }
+
+      for (const modifier of effect.definition.modifiers) {
+        if (modifier.target === 'all' || modifier.target === damageType) {
+          if (modifier.type === EffectModifierType.ARMOR_ADD) {
+            addModifier += modifier.value * effect.currentStacks;
+          } else if (modifier.type === EffectModifierType.ARMOR_BONUS) {
+            bonusModifier += modifier.value * effect.currentStacks;
+          } else if (modifier.type === EffectModifierType.ARMOR_MULTIPLY) {
+            multiplyModifier += modifier.value * effect.currentStacks;
+          }
+        }
+      }
+    }
+
+    // ARMOR_ADD 和 ARMOR_BONUS 是加法，ARMOR_MULTIPLY 是乘法
+    return (addModifier + bonusModifier) * (1 + multiplyModifier);
+  }
+
   // ========== 显示方法 ==========
 
   /**
@@ -540,5 +590,92 @@ export class EffectManager {
       effects: this.effects.valueSeq().map(e => e.toJson()).toArray(),
       definitions: this.definitions.valueSeq().map(d => d.toJson()).toArray(),
     };
+  }
+
+  // ========== 效果交互 ============
+
+  /**
+   * 计算效果的持续时间（考虑其他效果的影响）
+   *
+   * @param effectId 要应用的效果ID
+   * @param definition 效果定义
+   * @returns 修改后的持续时间
+   */
+  private calculateEffectDuration(
+    effectId: EffectTypeId,
+    definition: EffectDefinition
+  ): number {
+    let duration = definition.getDefaultDuration();
+
+    // 检查所有现有效果是否减少此效果的持续时间
+    for (const effect of this.effects.valueSeq()) {
+      if (!effect.isActive) continue;
+
+      const reduction = effect.definition.reducesDuration.get(effectId);
+      if (reduction !== undefined) {
+        duration -= reduction;
+      }
+    }
+
+    return Math.max(0, duration);
+  }
+
+  /**
+   * 检查是否对指定效果免疫
+   *
+   * @param effectId 要检查的效果ID
+   * @returns 是否免疫
+   */
+  isImmuneToEffect(effectId: EffectTypeId): boolean {
+    // 检查所有现有效果的免疫列表
+    for (const effect of this.effects.valueSeq()) {
+      if (!effect.isActive) continue;
+
+      if (effect.definition.effectImmunities.includes(effectId)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 检查是否有任何效果可以导致死亡
+   *
+   * @returns 可以导致死亡的效果列表
+   */
+  checkKillEffects(): List<Effect> {
+    return List(
+      this.effects.valueSeq().filter(e => e.isActive && e.definition.canKill)
+    );
+  }
+
+  /**
+   * 获取死亡消息
+   *
+   * @returns 死亡消息或 null
+   */
+  getKillMessage(): string | null {
+    for (const effect of this.effects.valueSeq()) {
+      if (effect.isActive && effect.definition.canKill && effect.definition.killMessage) {
+        return effect.definition.killMessage;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 检查效果是否会因为持续时间减少而立即过期
+   *
+   * @param effectId 要检查的效果ID
+   * @returns 是否会立即过期
+   */
+  willExpireImmediately(effectId: EffectTypeId): boolean {
+    const definition = this.definitions.get(effectId);
+    if (!definition) return false;
+
+    const modifiedDuration = this.calculateEffectDuration(effectId, definition);
+    return modifiedDuration <= 0;
   }
 }

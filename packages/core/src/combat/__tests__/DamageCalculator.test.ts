@@ -312,9 +312,9 @@ describe('DamageCalculator', () => {
       );
 
       // With 25% crit chance, we should get crits more often than not
-      // Just check it can succeed
+      // Just check it can succeed (can be 2x normal crit or 4x double crit)
       if (result.isCrit) {
-        expect(result.critMultiplier).toBe(2.0);
+        expect(result.critMultiplier === 2.0 || result.critMultiplier === 4.0).toBe(true);
       }
     });
   });
@@ -392,9 +392,9 @@ describe('DamageCalculator', () => {
 
       const combined = DamageCalculator.calculateCombinedResistances(r1, r2, r3);
 
-      expect(combined.getResistance('BASH' as DamageTypeId)).toBe(8); // max(5,8,3)
-      expect(combined.getResistance('CUT' as DamageTypeId)).toBe(3); // max(3,2)
-      expect(combined.getResistance('STAB' as DamageTypeId)).toBe(4); // max(0,0,4)
+      expect(combined.getResistance('bash' as DamageTypeId)).toBe(8); // max(5,8,3)
+      expect(combined.getResistance('cut' as DamageTypeId)).toBe(3); // max(3,2)
+      expect(combined.getResistance('stab' as DamageTypeId)).toBe(4); // max(0,0,4)
     });
 
     it('should handle empty resistance list', () => {

@@ -184,20 +184,9 @@ describe('Cataclysm-DDA Complete MapGen Loading Test', () => {
               const objKeys = Object.keys(obj.object);
 
               // 未支持的特性列表
+              // 注意：rotation 是 place_vehicles 的子属性，不是顶级特性
+              // add 是一个特殊指令，通常不需要解析
               const unsupportedKeys = [
-                'toilets',
-                'computers',
-                'vendingmachines',
-                'place_vendingmachines',
-                'place_loot',
-                'sealed_item',
-                'rotation',
-                'gaspumps',
-                'liquids',
-                'monsters',
-                'faction_owner',
-                'place_zones',
-                'ter_furn_transforms',
                 'add',
               ];
 

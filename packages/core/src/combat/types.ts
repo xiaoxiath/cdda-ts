@@ -153,6 +153,25 @@ export enum BodyPartType {
   FOOT_R = 'FOOT_R',
 }
 
+/**
+ * 子身体部位类型
+ * 用于更精细的身体部位划分（上臂、下臂、大腿、小腿等）
+ */
+export enum SubBodyPartType {
+  // 左臂
+  UPPER_ARM_L = 'UPPER_ARM_L',
+  LOWER_ARM_L = 'LOWER_ARM_L',
+  // 右臂
+  UPPER_ARM_R = 'UPPER_ARM_R',
+  LOWER_ARM_R = 'LOWER_ARM_R',
+  // 左腿
+  UPPER_LEG_L = 'UPPER_LEG_L',
+  LOWER_LEG_L = 'LOWER_LEG_L',
+  // 右腿
+  UPPER_LEG_R = 'UPPER_LEG_R',
+  LOWER_LEG_R = 'LOWER_LEG_R',
+}
+
 // ============================================================================
 // JSON 对象类型
 // ============================================================================

@@ -195,7 +195,75 @@ describe('EquipmentSlot', () => {
     });
 
     it('should have all slots in array', () => {
-      expect(AllEquipmentSlots.length).toBe(17);
+      expect(AllEquipmentSlots.length).toBe(31);
+    });
+
+    it('should have left/right specific slots', () => {
+      expect(EquipmentSlots.HAND_L).toBeDefined();
+      expect(EquipmentSlots.HAND_R).toBeDefined();
+      expect(EquipmentSlots.LEG_L).toBeDefined();
+      expect(EquipmentSlots.LEG_R).toBeDefined();
+      expect(EquipmentSlots.FOOT_L).toBeDefined();
+      expect(EquipmentSlots.FOOT_R).toBeDefined();
+    });
+
+    it('should have all sub-body part slots', () => {
+      // 大臂槽位
+      expect(EquipmentSlots.UPPER_ARM_L).toBeDefined();
+      expect(EquipmentSlots.UPPER_ARM_R).toBeDefined();
+      // 小臂槽位
+      expect(EquipmentSlots.LOWER_ARM_L).toBeDefined();
+      expect(EquipmentSlots.LOWER_ARM_R).toBeDefined();
+      // 大腿槽位
+      expect(EquipmentSlots.UPPER_LEG_L).toBeDefined();
+      expect(EquipmentSlots.UPPER_LEG_R).toBeDefined();
+      // 小腿槽位
+      expect(EquipmentSlots.LOWER_LEG_L).toBeDefined();
+      expect(EquipmentSlots.LOWER_LEG_R).toBeDefined();
+    });
+
+    it('should create left hand slot', () => {
+      const slot = EquipmentSlot.handLeft();
+
+      expect(slot.type).toBe(EquipmentSlotType.HAND_L);
+      expect(slot.name).toBe('左手');
+      expect(slot.validLayers.includes(EquipmentLayer.MID_LAYER)).toBe(true);
+      expect(slot.validLayers.includes(EquipmentLayer.OUTER_LAYER)).toBe(true);
+    });
+
+    it('should create right hand slot', () => {
+      const slot = EquipmentSlot.handRight();
+
+      expect(slot.type).toBe(EquipmentSlotType.HAND_R);
+      expect(slot.name).toBe('右手');
+    });
+
+    it('should create left leg slot', () => {
+      const slot = EquipmentSlot.legLeft();
+
+      expect(slot.type).toBe(EquipmentSlotType.LEG_L);
+      expect(slot.name).toBe('左腿');
+    });
+
+    it('should create right leg slot', () => {
+      const slot = EquipmentSlot.legRight();
+
+      expect(slot.type).toBe(EquipmentSlotType.LEG_R);
+      expect(slot.name).toBe('右腿');
+    });
+
+    it('should create left foot slot', () => {
+      const slot = EquipmentSlot.footLeft();
+
+      expect(slot.type).toBe(EquipmentSlotType.FOOT_L);
+      expect(slot.name).toBe('左脚');
+    });
+
+    it('should create right foot slot', () => {
+      const slot = EquipmentSlot.footRight();
+
+      expect(slot.type).toBe(EquipmentSlotType.FOOT_R);
+      expect(slot.name).toBe('右脚');
     });
   });
 });

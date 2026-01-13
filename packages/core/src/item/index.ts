@@ -24,6 +24,33 @@ export {
 } from './spoilage';
 export type { SpoilageData } from './spoilage';
 
+// ============ 潮湿系统 ============
+export {
+  WetnessLevel,
+  createWetnessData,
+  getWetnessLevel,
+  getWetnessLevelName,
+  calculateWetnessEffect,
+  updateWetness,
+  addWetness,
+  setWetness,
+  isWet,
+  isSoaked,
+  getWetnessDescription,
+  getMaterialDryFactor,
+  getMaterialAbsorbFactor,
+  calculateAbsorbedWetness,
+  Wetness,
+  BASE_DRY_RATE,
+  WETNESS_WARMTH_PENALTY,
+  WETNESS_WEIGHT_BONUS,
+} from './wetness';
+export type {
+  WetnessValue,
+  WetnessData,
+  WetnessEffect,
+} from './wetness';
+
 // ============ 物品类型 ============
 export { ItemType } from './ItemType';
 export type {
@@ -86,8 +113,33 @@ export {
   getAmmoDrop,
   getAmmoDropChance,
   isAmmoDropActive,
+  // 新增：射击模式系统
+  getFireModes,
+  hasFireMode,
+  getBurstCount,
+  // 新增：后坐力和散布
+  getGunRecoil,
+  calculateDispersion,
+  calculateReloadTime as calculateReloadTimeWithSkill,
+  // 新增：枪械状态
+  updateGunStateAfterFire,
+  checkJam,
+  resetGunState,
+  // 新增：高级射击
+  fireGunWithMode,
+  clearJam,
+  coolDownGun,
+  // 新增：配件系统
+  hasModSlot,
+  getModSlots,
 } from './weapon';
-export type { FireResult, ReloadResult } from './weapon';
+export type {
+  FireResult,
+  ReloadResult,
+  FireMode,
+  GunState,
+  GunModSlot,
+} from './weapon';
 
 // ============ 物品堆叠系统 ============
 export {
@@ -120,18 +172,26 @@ export {
   toolActivateMethod,
   toolUseMethod,
   gunFireMethod,
+  containerOpenMethod,
+  containerCloseMethod,
+  bookReadMethod,
+  armorWearMethod,
+  armorRemoveMethod,
+  weaponAttackMethod,
   registerBuiltinUseMethods,
   getAvailableUseMethods,
   executeUseMethod,
   useItem,
   canUseItem,
   getUseTime,
+  applySideEffects,
 } from './use-methods';
 export type {
   UseResult,
   UseSideEffect,
   UseContext,
   UseMethodDefinition,
+  ApplySideEffectsResult,
 } from './use-methods';
 
 // ============ 物品附魔和变体系统 ============

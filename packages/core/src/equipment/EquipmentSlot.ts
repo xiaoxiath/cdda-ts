@@ -309,6 +309,216 @@ export class EquipmentSlot {
     });
   }
 
+  /**
+   * 创建左手槽位（用于手套等左右不对称装备）
+   */
+  static handLeft(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('hand_l'),
+      type: EST.HAND_L,
+      name: '左手',
+      description: '左手装备槽（左 gloves、护腕等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建右手槽位（用于手套等左右不对称装备）
+   */
+  static handRight(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('hand_r'),
+      type: EST.HAND_R,
+      name: '右手',
+      description: '右手装备槽（右 gloves、护腕等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建左腿槽位（用于护腿等左右不对称装备）
+   */
+  static legLeft(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('leg_l'),
+      type: EST.LEG_L,
+      name: '左腿',
+      description: '左腿装备槽（左护腿等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建右腿槽位（用于护腿等左右不对称装备）
+   */
+  static legRight(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('leg_r'),
+      type: EST.LEG_R,
+      name: '右腿',
+      description: '右腿装备槽（右护腿等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建左脚槽位（用于鞋子等左右不对称装备）
+   */
+  static footLeft(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('foot_l'),
+      type: EST.FOOT_L,
+      name: '左脚',
+      description: '左脚装备槽（左鞋子等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建右脚槽位（用于鞋子等左右不对称装备）
+   */
+  static footRight(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('foot_r'),
+      type: EST.FOOT_R,
+      name: '右脚',
+      description: '右脚装备槽（右鞋子等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建左大臂槽位（子身体部位）
+   */
+  static upperArmLeft(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('upper_arm_l'),
+      type: EST.UPPER_ARM_L,
+      name: '左大臂',
+      description: '左大臂装备槽（护臂等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建右大臂槽位（子身体部位）
+   */
+  static upperArmRight(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('upper_arm_r'),
+      type: EST.UPPER_ARM_R,
+      name: '右大臂',
+      description: '右大臂装备槽（护臂等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建左小臂槽位（子身体部位）
+   */
+  static lowerArmLeft(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('lower_arm_l'),
+      type: EST.LOWER_ARM_L,
+      name: '左小臂',
+      description: '左小臂装备槽（护腕、护臂等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建右小臂槽位（子身体部位）
+   */
+  static lowerArmRight(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('lower_arm_r'),
+      type: EST.LOWER_ARM_R,
+      name: '右小臂',
+      description: '右小臂装备槽（护腕、护臂等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建左大腿槽位（子身体部位）
+   */
+  static upperLegLeft(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('upper_leg_l'),
+      type: EST.UPPER_LEG_L,
+      name: '左大腿',
+      description: '左大腿装备槽（护腿等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建右大腿槽位（子身体部位）
+   */
+  static upperLegRight(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('upper_leg_r'),
+      type: EST.UPPER_LEG_R,
+      name: '右大腿',
+      description: '右大腿装备槽（护腿等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建左小腿槽位（子身体部位）
+   */
+  static lowerLegLeft(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('lower_leg_l'),
+      type: EST.LOWER_LEG_L,
+      name: '左小腿',
+      description: '左小腿装备槽（护胫等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
+  /**
+   * 创建右小腿槽位（子身体部位）
+   */
+  static lowerLegRight(): EquipmentSlot {
+    return EquipmentSlot.create({
+      id: createEquipmentSlotId('lower_leg_r'),
+      type: EST.LOWER_LEG_R,
+      name: '右小腿',
+      description: '右小腿装备槽（护胫等）',
+      validLayers: [EL.MID_LAYER, EL.OUTER_LAYER],
+      capacity: 1,
+      required: false,
+    });
+  }
+
   // ========== 查询方法 ==========
 
   /**
@@ -399,14 +609,29 @@ export const EquipmentSlots = {
   TORSO_MIDDLE: EquipmentSlot.torsoMiddle(),
   TORSO_INNER: EquipmentSlot.torsoInner(),
   HANDS: EquipmentSlot.hands(),
+  HAND_L: EquipmentSlot.handLeft(),
+  HAND_R: EquipmentSlot.handRight(),
   FINGER: EquipmentSlot.finger(),
   WRIST: EquipmentSlot.wrist(),
   LEGS: EquipmentSlot.legs(),
+  LEG_L: EquipmentSlot.legLeft(),
+  LEG_R: EquipmentSlot.legRight(),
   FEET: EquipmentSlot.feet(),
+  FOOT_L: EquipmentSlot.footLeft(),
+  FOOT_R: EquipmentSlot.footRight(),
   BACK: EquipmentSlot.back(),
   WAIST: EquipmentSlot.waist(),
   HAND_PRIMARY: EquipmentSlot.handPrimary(),
   HAND_SECONDARY: EquipmentSlot.handSecondary(),
+  // 子身体部位槽位
+  UPPER_ARM_L: EquipmentSlot.upperArmLeft(),
+  UPPER_ARM_R: EquipmentSlot.upperArmRight(),
+  LOWER_ARM_L: EquipmentSlot.lowerArmLeft(),
+  LOWER_ARM_R: EquipmentSlot.lowerArmRight(),
+  UPPER_LEG_L: EquipmentSlot.upperLegLeft(),
+  UPPER_LEG_R: EquipmentSlot.upperLegRight(),
+  LOWER_LEG_L: EquipmentSlot.lowerLegLeft(),
+  LOWER_LEG_R: EquipmentSlot.lowerLegRight(),
 };
 
 /**

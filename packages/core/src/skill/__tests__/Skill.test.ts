@@ -309,20 +309,15 @@ describe('Skill', () => {
     it('should decay after threshold', () => {
       const skill = Skill.fromLevel(mockDefinition, 5);
 
-      // 80 days later - 50 days over threshold, ~50% decay probability per run
+      // 80 days later - should have some rust
       const later = fixedTime + 80 * 24 * 60 * 60 * 1000;
 
-      // Run multiple times to test probability
-      let decayedCount = 0;
-      for (let i = 0; i < 100; i++) {
-        const decayed = skill.processDecay(later, 30);
-        if (decayed.level < 5 || decayed.practice.isDecaying) {
-          decayedCount++;
-        }
-      }
+      const decayed = skill.processDecay(later, 30);
 
-      // Should have some decay due to probability (very likely with 50% chance)
-      expect(decayedCount).toBeGreaterThan(0);
+      // With rust rate of 1.0, 80 days should add some rust level
+      expect(decayed.rust.isRusted).toBe(true);
+      expect(decayed.rust.rustLevel).toBeGreaterThan(0);
+      expect(decayed.getEffectiveLevel()).toBeLessThan(5);
     });
 
     it('should not decay level 0 skills', () => {

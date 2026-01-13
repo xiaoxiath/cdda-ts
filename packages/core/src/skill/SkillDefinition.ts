@@ -26,6 +26,8 @@ export class SkillDefinition {
   readonly isHidden!: boolean;
   readonly relatedItemTypes!: Set<string>;
   readonly prerequisites!: List<SkillPrerequisite>;
+  readonly rustRate!: number;
+  readonly defaultRustResist!: number;
 
   private constructor(props: SkillDefinitionProps) {
     this.id = props.id;
@@ -36,6 +38,8 @@ export class SkillDefinition {
     this.isHidden = props.isHidden ?? false;
     this.relatedItemTypes = Set(props.relatedItemTypes ?? []);
     this.prerequisites = List(props.prerequisites ?? []);
+    this.rustRate = props.rustRate ?? 1.0;
+    this.defaultRustResist = props.defaultRustResist ?? 0;
 
     Object.freeze(this);
   }

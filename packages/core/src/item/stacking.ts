@@ -283,7 +283,7 @@ export function isStackEmpty(item: Item): boolean {
   if (!isStackable(item)) {
     return false;
   }
-  return getCurrentStackSize(item) <= 0;
+  return item.charges <= 0;
 }
 
 /**
@@ -403,8 +403,8 @@ export function consolidateStacks(items: Item[]): Item[] {
       continue;
     }
 
-    // 按数量排序（大的在前）
-    group.sort((a, b) => getCurrentStackSize(b) - getCurrentStackSize(a));
+    // 按数量排序（小的在前，以便更好地填充现有堆）
+    group.sort((a, b) => getCurrentStackSize(a) - getCurrentStackSize(b));
 
     let current = group[0];
     let maxSize = getMaxStackSize(current);

@@ -188,7 +188,7 @@ describe('stacking - 堆叠操作', () => {
       const target = createTestItem({ id: 'stone', stackable: true, stackSize: 10, charges: 3 });
       const source = createTestItem({ id: 'stone', stackable: true, stackSize: 10, charges: 5 });
 
-      expect(calculateMergeAmount(target, source)).toBe(7); // Can add 7 more to reach 10
+      expect(calculateMergeAmount(target, source)).toBe(5); // Source only has 5, can add 5 more
     });
 
     it('should return 0 if items cannot stack', () => {

@@ -261,4 +261,289 @@ export interface RecipeJsonObject {
   reversible?: boolean;
   difficulty?: number;
   relatedSkills?: string[];
+  // Proficiency 相关
+  requiredProficiencies?: { proficiencyId: string; level: number }[];
+  proficienciesGained?: { proficiencyId: string; experience: number }[];
+}
+
+// ============================================================================
+// Proficiency 系统类型
+// ============================================================================
+
+/**
+ * 熟练度 ID
+ */
+export type ProficiencyId = string & { readonly __brand: unique symbol };
+
+/**
+ * 创建熟练度 ID
+ */
+export function createProficiencyId(id: string): ProficiencyId {
+  return id as ProficiencyId;
+}
+
+/**
+ * 熟练度等级
+ */
+export type ProficiencyLevel = number;
+
+/**
+ * 熟练度经验值
+ */
+export type ProficiencyExperience = number;
+
+/**
+ * 熟练度定义属性
+ */
+export interface ProficiencyDefinitionProps {
+  id: ProficiencyId;
+  name: string;
+  description?: string;
+  category: string;
+  /** 难度倍率 */
+  difficultyMultiplier: number;
+  /** 相关的配方类别 */
+  relatedCategories: RecipeCategory[];
+  /** 最大等级 */
+  maxLevel: ProficiencyLevel;
+}
+
+/**
+ * 熟练度实例数据
+ */
+export interface ProficiencyData {
+  /** 熟练度定义 */
+  definition: any; // ProficiencyDefinition - 前向声明避免循环引用
+  /** 当前等级 */
+  level: ProficiencyLevel;
+  /** 当前经验 */
+  experience: ProficiencyExperience;
+  /** 是否已解锁 */
+  isUnlocked: boolean;
+}
+
+/**
+ * 熟练度对制作的影响
+ */
+export interface ProficiencyCraftingBonus {
+  /** 制作速度倍率 */
+  speedMultiplier: number;
+  /** 成功率加值 */
+  successRateBonus: number;
+  /** 批量大小修正 */
+  batchSizeModifier: number;
+}
+
+// ============================================================================
+// Quality 系统类型
+// ============================================================================
+
+/**
+ * 质量 ID
+ */
+export type QualityId = string & { readonly __brand: unique symbol };
+
+/**
+ * 创建质量 ID
+ */
+export function createQualityId(id: string): QualityId {
+  return id as QualityId;
+}
+
+/**
+ * 质量等级 (0-5)
+ */
+export type QualityLevel = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * 质量等级枚举
+ */
+export enum QualityLevelEnum {
+  AWFUL = 0,        // 极差
+  BAD = 1,          // 差
+  POOR = 2,         // 较差
+  NORMAL = 3,       // 普通
+  GOOD = 4,         // 良好
+  EXCELLENT = 5,    // 优秀
+}
+
+/**
+ * 质量要求
+ */
+export interface QualityRequirement {
+  /** 质量 ID */
+  qualityId: QualityId;
+  /** 最低质量等级 */
+  minLevel: QualityLevel;
+  /** 是否必须包含此质量 */
+  required?: boolean;
+}
+
+/**
+ * 质量匹配结果
+ */
+export interface QualityMatchResult {
+  /** 是否匹配 */
+  matches: boolean;
+  /** 匹配的质量 ID */
+  matchedQualities: QualityId[];
+  /** 缺少的必需质量 */
+  missingRequired: QualityRequirement[];
+  /** 质量等级不足 */
+  insufficientLevel: Array<{ qualityId: QualityId; required: QualityLevel; has: QualityLevel }>;
+}
+
+/**
+ * 质量定义属性
+ */
+export interface QualityDefinitionProps {
+  id: QualityId;
+  name: string;
+  description?: string;
+  /** 相关工具 */
+  relatedTools?: string[];
+  /** 相关物品类型 */
+  relatedItemTypes?: string[];
+  /** 默认质量等级 */
+  defaultLevel?: QualityLevel;
+}
+
+/**
+ * 质量实例数据
+ */
+export interface QualityData {
+  /** 质量 ID */
+  qualityId: QualityId;
+  /** 质量等级 */
+  level: QualityLevel;
+}
+
+// ============================================================================
+// 批量优化系统类型
+// ============================================================================
+
+/**
+ * 批量优化参数
+ */
+export interface BatchOptimizationParams {
+  /** 基础批量大小 */
+  baseBatchSize: number;
+  /** 技能等级 */
+  skillLevel: number;
+  /** 熟练度等级 */
+  proficiencyLevel?: number;
+  /** 难度倍率 */
+  difficultyMultiplier: number;
+  /** 最大批次限制 */
+  maxBatchLimit?: number;
+}
+
+/**
+ * 批量优化结果
+ */
+export interface BatchOptimizationResult {
+  /** 优化的批量大小 */
+  batchSize: number;
+  /** 效率评分 (0-1) */
+  efficiency: number;
+  /** 预计时间节省百分比 */
+  timeSavedPercent: number;
+  /** Logistic 函数参数 */
+  logisticParams: {
+    /** 中心点 (x 坐标) */
+    center: number;
+    /** 增长率 */
+    growthRate: number;
+    /** 最大值 */
+    maxValue: number;
+  };
+}
+
+// ============================================================================
+// 高级配方功能类型
+// ============================================================================
+
+/**
+ * 配方过滤器条件
+ */
+export interface RecipeFilter {
+  /** 配方类别 */
+  categories?: RecipeCategory[];
+  /** 制作类型 */
+  types?: CraftingType[];
+  /** 所需技能 ID */
+  requiredSkills?: string[];
+  /** 所需工具 ID */
+  requiredTools?: string[];
+  /** 是否显示已锁定的配方 */
+  showLocked?: boolean;
+  /** 是否显示已学会的配方 */
+  showLearned?: boolean;
+  /** 搜索关键词 */
+  searchQuery?: string;
+  /** 最低难度 */
+  minDifficulty?: number;
+  /** 最高难度 */
+  maxDifficulty?: number;
+}
+
+/**
+ * 配方排序方式
+ */
+export enum RecipeSortBy {
+  NAME = 'name',           // 按名称
+  CATEGORY = 'category',   // 按类别
+  DIFFICULTY = 'difficulty', // 按难度
+  TIME = 'time',           // 按时间
+  SKILL = 'skill',         // 按技能要求
+}
+
+/**
+ * 配方排序顺序
+ */
+export enum RecipeSortOrder {
+  ASC = 'asc',     // 升序
+  DESC = 'desc',   // 降序
+}
+
+/**
+ * 配方排序参数
+ */
+export interface RecipeSort {
+  /** 排序方式 */
+  sortBy: RecipeSortBy;
+  /** 排序顺序 */
+  sortOrder: RecipeSortOrder;
+}
+
+/**
+ * 配方助手建议
+ */
+export interface RecipeAssistantAdvice {
+  /** 配方 */
+  recipe: any; // Recipe
+  /** 可制作性评分 (0-1) */
+  craftabilityScore: number;
+  /** 缺少的材料 */
+  missingMaterials: string[];
+  /** 缺少的工具 */
+  missingTools: string[];
+  /** 技能差距 */
+  skillGap: number;
+  /** 优化建议 */
+  suggestions: string[];
+}
+
+/**
+ * 配方重复信息
+ */
+export interface RecipeDuplicateInfo {
+  /** 是否为重复配方 */
+  isDuplicate: boolean;
+  /** 主配方 ID */
+  primaryRecipeId: string;
+  /** 重复配方 IDs */
+  duplicateRecipeIds: string[];
+  /** 重复原因 */
+  duplicateReason: 'identical' | 'similar' | 'upgrade';
 }

@@ -240,7 +240,8 @@ export class DamageInstance implements IDamageInstance {
    * 检查是否包含指定伤害类型
    */
   hasDamageType(type: DamageTypeId): boolean {
-    return this.damageUnits.some(unit => unit.type === type);
+    const typeUpper = type.toUpperCase();
+    return this.damageUnits.some(unit => unit.type.toUpperCase() === typeUpper);
   }
 
   /**

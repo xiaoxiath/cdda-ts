@@ -4,7 +4,7 @@
  * 参考 Cataclysm-DDA 的 effect_type 结构
  */
 
-import { Map } from 'immutable';
+import { Map, List } from 'immutable';
 import type { BodyPartId } from '../combat/types';
 
 /**
@@ -100,14 +100,42 @@ export enum EffectCategory {
  * 效果修饰符类型
  */
 export enum EffectModifierType {
+  // ============ 基础属性修饰 ============
   STAT_ADD = 'stat_add',           // 属性加法
   STAT_MULTIPLY = 'stat_multiply', // 属性乘法
+
+  // ============ 战斗修饰 - 命中 ============
+  HIT_BONUS = 'hit_bonus',         // 命中加值
+  HIT_MULTIPLIER = 'hit_multiplier', // 命中乘数
+
+  // ============ 战斗修饰 - 伤害 ============
   DAMAGE_ADD = 'damage_add',       // 伤害加法
+  DAMAGE_BONUS = 'damage_bonus',   // 伤害加值
   DAMAGE_MULTIPLY = 'damage_multiply', // 伤害乘法
-  SPEED_ADD = 'speed_add',         // 速度加法
-  SPEED_MULTIPLY = 'speed_multiply', // 速度乘法
+
+  // ============ 战斗修饰 - 护甲 ============
   ARMOR_ADD = 'armor_add',         // 护甲加法
-  ARMOR_MULTIPLY = 'armor_multiply', // 护甲乘法
+  ARMOR_BONUS = 'armor_bonus',     // 护甲加值
+  ARMOR_MULTIPLY = 'armor_multiply', // 护甲乘数
+
+  // ============ 战斗修饰 - 速度 ============
+  SPEED_ADD = 'speed_add',         // 速度加法
+  SPEED_BONUS = 'speed_bonus',     // 速度加值
+  SPEED_MULTIPLY = 'speed_multiply', // 速度乘数
+
+  // ============ 战斗修饰 - 暴击 ============
+  CRIT_CHANCE_BONUS = 'crit_chance_bonus',   // 暴击率加值
+  CRIT_DAMAGE_MULTIPLIER = 'crit_damage_multiplier', // 暴击伤害乘数
+
+  // ============ 战斗修饰 - 远程 ============
+  ACCURACY_BONUS = 'accuracy_bonus',         // 精度加值
+  DISPERSION_MODIFIER = 'dispersion_modifier', // 散布修正
+
+  // ============ 战斗修饰 - 其他 ============
+  VISION_RANGE = 'vision_range',     // 视野范围
+
+  // ============ 抗性修饰 ============
+  RESISTANCE = 'resistance',         // 伤害抗性
 }
 
 /**
@@ -146,6 +174,16 @@ export interface EffectModifier {
   target: string;
   /** 修饰符值 */
   value: number;
+  /** 应用条件（可选） */
+  condition?: string;
+  /** 目标类型：attacker/victim（可选） */
+  targetType?: 'attacker' | 'victim' | 'both';
+  /** 适用的伤害类型列表（可选） */
+  damageTypes?: List<string>;
+  /** 适用的攻击类型列表（可选） */
+  attackTypes?: List<'melee' | 'ranged'>;
+  /** 最小强度要求（可选） */
+  minIntensity?: number;
 }
 
 /**

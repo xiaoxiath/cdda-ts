@@ -442,8 +442,13 @@ describe('CombatFeedback', () => {
       expect(feedback.messages[0].data?.effect).toBe('中毒');
       expect(feedback.messages[0].data?.intensity).toBe(2);
 
-      // No visuals or sounds for effect application
-      expect(feedback.visuals.length).toBe(0);
+      // Should have visual effect for effect application
+      expect(feedback.visuals.length).toBe(1);
+      expect(feedback.visuals[0].effect).toBe(VisualEffect.DAMAGE_TEXT);
+      expect(feedback.visuals[0].parameters?.text).toBe('+中毒');
+      expect(feedback.visuals[0].color).toBe('#00ff00');
+
+      // No sounds for effect application
       expect(feedback.sounds.length).toBe(0);
     });
   });

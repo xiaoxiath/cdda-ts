@@ -5,6 +5,7 @@
  */
 
 import type { Map, List } from 'immutable';
+import type { BodyPartId } from '../damage/types';
 
 // ============================================================================
 // 基础类型定义
@@ -39,7 +40,7 @@ export function createLayerId(id: string): LayerId {
 // ============================================================================
 
 /**
- * 装备槽类型
+ * 装备槽类型（支持左右区分和子身体部位）
  */
 export enum EquipmentSlotType {
   /** 头部 */
@@ -58,16 +59,28 @@ export enum EquipmentSlotType {
   TORSO_INNER = 'TORSO_INNER',
   /** 躯干（中层） */
   TORSO_MIDDLE = 'TORSO_MIDDLE',
-  /** 手部（手套） */
+  /** 手部（通用） */
   HANDS = 'HANDS',
+  /** 左手 */
+  HAND_L = 'HAND_L',
+  /** 右手 */
+  HAND_R = 'HAND_R',
   /** 手指 */
   FINGER = 'FINGER',
   /** 手腕 */
   WRIST = 'WRIST',
-  /** 腿部 */
+  /** 腿部（通用） */
   LEGS = 'LEGS',
-  /** 脚部 */
+  /** 左腿 */
+  LEG_L = 'LEG_L',
+  /** 右腿 */
+  LEG_R = 'LEG_R',
+  /** 脚部（通用） */
   FEET = 'FEET',
+  /** 左脚 */
+  FOOT_L = 'FOOT_L',
+  /** 右脚 */
+  FOOT_R = 'FOOT_R',
   /** 背部 */
   BACK = 'BACK',
   /** 腰部 */
@@ -76,6 +89,45 @@ export enum EquipmentSlotType {
   HAND_PRIMARY = 'HAND_PRIMARY',
   /** 副手 */
   HAND_SECONDARY = 'HAND_SECONDARY',
+  // ========== 子身体部位 ==========
+  /** 左大臂 */
+  UPPER_ARM_L = 'UPPER_ARM_L',
+  /** 右大臂 */
+  UPPER_ARM_R = 'UPPER_ARM_R',
+  /** 左小臂 */
+  LOWER_ARM_L = 'LOWER_ARM_L',
+  /** 右小臂 */
+  LOWER_ARM_R = 'LOWER_ARM_R',
+  /** 左大腿 */
+  UPPER_LEG_L = 'UPPER_LEG_L',
+  /** 右大腿 */
+  UPPER_LEG_R = 'UPPER_LEG_R',
+  /** 左小腿 */
+  LOWER_LEG_L = 'LOWER_LEG_L',
+  /** 右小腿 */
+  LOWER_LEG_R = 'LOWER_LEG_R',
+}
+
+/**
+ * 子身体部位类型（更精细的部位划分）
+ */
+export enum SubBodyPartType {
+  /** 左大臂 */
+  UPPER_ARM_L = 'UPPER_ARM_L',
+  /** 右大臂 */
+  UPPER_ARM_R = 'UPPER_ARM_R',
+  /** 左小臂 */
+  LOWER_ARM_L = 'LOWER_ARM_L',
+  /** 右小臂 */
+  LOWER_ARM_R = 'LOWER_ARM_R',
+  /** 左大腿 */
+  UPPER_LEG_L = 'UPPER_LEG_L',
+  /** 右大腿 */
+  UPPER_LEG_R = 'UPPER_LEG_R',
+  /** 左小腿 */
+  LOWER_LEG_L = 'LOWER_LEG_L',
+  /** 右小腿 */
+  LOWER_LEG_R = 'LOWER_LEG_R',
 }
 
 /**
@@ -214,4 +266,157 @@ export interface SlotConflictResult {
   conflictingSlots: EquipmentSlotType[];
   /** 被替换的装备 */
   displacedItems: EquipmentItem[];
+}
+
+// ============================================================================
+// 材料系统类型
+// ============================================================================
+
+/**
+ * 材料 ID
+ */
+export type MaterialId = string & { readonly __brand: unique symbol };
+
+/**
+ * 创建材料 ID
+ */
+export function createMaterialId(id: string): MaterialId {
+  return id as MaterialId;
+}
+
+/**
+ * 材料属性
+ */
+export interface MaterialProperties {
+  /** 刚性（影响抗冲击能力） */
+  rigidity: number;
+  /** 柔性（影响抗切割能力） */
+  flexibility: number;
+  /** 密度（影响重量） */
+  density: number;
+  /** 导电性 */
+  conductivity: number;
+  /** 导热性 */
+  thermalConductivity: number;
+  /** 易燃性 */
+  flammability: number;
+  /** 耐腐蚀性 */
+  corrosionResistance: number;
+}
+
+/**
+ * 材料抗性数据
+ */
+export interface MaterialResistances {
+  /** 钝击抗性 */
+  bash: number;
+  /** 切割抗性 */
+  cut: number;
+  /** 刺击抗性 */
+  stab: number;
+  /** 子弹抗性 */
+  bullet: number;
+  /** 酸性抗性 */
+  acid: number;
+  /** 热能抗性 */
+  heat: number;
+  /** 寒冷抗性 */
+  cold: number;
+  /** 电击抗性 */
+  electric: number;
+}
+
+/**
+ * 材料定义
+ */
+export interface MaterialDefinition {
+  id: MaterialId;
+  name: string;
+  /** 显示名称 */
+  displayName: string;
+  /** 描述 */
+  description?: string;
+  /** 材料属性 */
+  properties: MaterialProperties;
+  /** 材料抗性 */
+  resistances: MaterialResistances;
+  /** 基础厚度 */
+  baseThickness: number;
+  /** 是否为金属 */
+  isMetal: boolean;
+  /** 是否为有机材料 */
+  isOrganic: boolean;
+}
+
+// ============================================================================
+// 潮湿和耐久系统类型
+// ============================================================================
+
+/**
+ * 装备潮湿状态
+ */
+export enum WetnessLevel {
+  DRY = 'DRY',           // 干燥 (0-10%)
+  DAMP = 'DAMP',         // 微湿 (10-30%)
+  WET = 'WET',           // 潮湿 (30-60%)
+  SOAKED = 'SOAKED',     // 浸透 (60-90%)
+  DRENCHED = 'DRENCHED', // 湿透 (90-100%)
+}
+
+/**
+ * 装备耐久度数据
+ */
+export interface DurabilityData {
+  /** 当前耐久度 (0-100) */
+  currentDurability: number;
+  /** 最大耐久度 */
+  maxDurability: number;
+  /** 是否已损坏 */
+  isBroken: boolean;
+  /** 损坏历史 */
+  damageHistory: DamageEvent[];
+}
+
+/**
+ * 损坏事件
+ */
+export interface DamageEvent {
+  /** 损坏时间 */
+  timestamp: number;
+  /** 损坏类型 */
+  damageType: string;
+  /** 损坏量 */
+  amount: number;
+  /** 来源 */
+  source: string;
+}
+
+/**
+ * 装备潮湿数据
+ */
+export interface WetnessData {
+  /** 当前潮湿值 (0-100) */
+  currentWetness: number;
+  /** 最大潮湿值 */
+  maxWetness: number;
+  /** 干燥速率（每分钟减少的潮湿值） */
+  dryRate: number;
+  /** 最后更新时间 */
+  lastUpdate: number;
+}
+
+/**
+ * 装备状态扩展（包含潮湿和耐久）
+ */
+export interface EquipmentItemExtended extends EquipmentItem {
+  /** 材料信息 */
+  material?: MaterialId;
+  /** 材料定义引用 */
+  materialDefinition?: MaterialDefinition;
+  /** 潮湿数据 */
+  wetness?: WetnessData;
+  /** 耐久度数据 */
+  durability?: DurabilityData;
+  /** 退化修正值（基于材料和环境） */
+  degradationModifier?: number;
 }

@@ -23,6 +23,13 @@ import {
   toolActivateMethod,
   toolUseMethod,
   gunFireMethod,
+  containerOpenMethod,
+  containerCloseMethod,
+  bookReadMethod,
+  armorWearMethod,
+  armorRemoveMethod,
+  weaponAttackMethod,
+  applySideEffects,
   type UseMethodDefinition,
   type UseContext,
   type UseResult,
@@ -39,12 +46,15 @@ class MockItemForTesting {
     public charges: number,
     public active: boolean = false,
     public frozen: number = 0,
+    public _contents: ItemContents = new ItemContents(),
+    public _damage: number = 0,
     private _isComestible: boolean = false,
     private _isTool: boolean = false,
     private _isGun: boolean = false,
     private _isArmor: boolean = false,
     private _isBook: boolean = false,
     private _isBionic: boolean = false,
+    private _isWeapon: boolean = false,
     private comestibleData?: any,
     private gunData?: any
   ) {}
@@ -55,9 +65,13 @@ class MockItemForTesting {
   isArmor() { return this._isArmor; }
   isBook() { return this._isBook; }
   isBionic() { return this._isBionic; }
+  isWeapon() { return this._isGun || this._isWeapon; }
 
   get comestible() { return this.comestibleData; }
   get gun() { return this.gunData; }
+  get contents() { return this._contents; }
+  get damage() { return this._damage; }
+  get itemVars() { return Map(); }
 
   consumeOne() {
     if (this.charges > 1) {
@@ -72,14 +86,104 @@ class MockItemForTesting {
     return this;
   }
 
+  setActive(value: boolean) {
+    const newItem = new MockItemForTesting(
+      this.id,
+      this.name,
+      this.type,
+      this.charges,
+      value,
+      this.frozen,
+      this._contents,
+      this._damage,
+      this._isComestible,
+      this._isTool,
+      this._isGun,
+      this._isArmor,
+      this._isBook,
+      this._isBionic,
+      this._isWeapon,
+      this.comestibleData,
+      this.gunData
+    );
+    return newItem;
+  }
+
   isSpoiled() {
     return false;
   }
 
-  // Add other required methods
-  get contents() { return new ItemContents(); }
-  get damage() { return 0; }
-  get itemVars() { return Map(); }
+  isBroken() {
+    return this._damage >= 4000;
+  }
+
+  // Immutable-like set method for testing
+  set(key: string, value: any): any {
+    if (key === 'charges') {
+      return new MockItemForTesting(
+        this.id,
+        this.name,
+        this.type,
+        value,
+        this.active,
+        this.frozen,
+        this._contents,
+        this._damage,
+        this._isComestible,
+        this._isTool,
+        this._isGun,
+        this._isArmor,
+        this._isBook,
+        this._isBionic,
+        this._isWeapon,
+        this.comestibleData,
+        this.gunData
+      );
+    }
+    if (key === 'active') {
+      return new MockItemForTesting(
+        this.id,
+        this.name,
+        this.type,
+        this.charges,
+        value,
+        this.frozen,
+        this._contents,
+        this._damage,
+        this._isComestible,
+        this._isTool,
+        this._isGun,
+        this._isArmor,
+        this._isBook,
+        this._isBionic,
+        this._isWeapon,
+        this.comestibleData,
+        this.gunData
+      );
+    }
+    if (key === 'contents') {
+      return new MockItemForTesting(
+        this.id,
+        this.name,
+        this.type,
+        this.charges,
+        this.active,
+        this.frozen,
+        value,
+        this._damage,
+        this._isComestible,
+        this._isTool,
+        this._isGun,
+        this._isArmor,
+        this._isBook,
+        this._isBionic,
+        this._isWeapon,
+        this.comestibleData,
+        this.gunData
+      );
+    }
+    return this;
+  }
 }
 
 // Helper function to create a test item
@@ -95,10 +199,16 @@ function createTestItem(props: {
   isArmor?: boolean;
   isBook?: boolean;
   isBionic?: boolean;
+  isWeapon?: boolean;
   comestible?: any;
   gun?: any;
+  book?: any;
+  armor?: any;
+  generic?: any;
   active?: boolean;
   frozen?: number;
+  damage?: number;
+  contents?: ItemContents;
 }): any {
   const itemType = new ItemType({
     id: createItemTypeId(props.id),
@@ -114,6 +224,9 @@ function createTestItem(props: {
     color: 'white',
     comestible: props.comestible,
     gun: props.gun,
+    book: props.book,
+    armor: props.armor,
+    generic: props.generic,
   });
 
   return new MockItemForTesting(
@@ -123,12 +236,15 @@ function createTestItem(props: {
     props.charges ?? 1,
     props.active,
     props.frozen,
+    props.contents,
+    props.damage,
     props.isComestible,
     props.isTool,
     props.isGun,
     props.isArmor,
     props.isBook,
     props.isBionic,
+    props.isWeapon,
     props.comestible,
     props.gun
   );
@@ -136,8 +252,11 @@ function createTestItem(props: {
 
 describe('use-methods - 使用方法注册表', () => {
   beforeEach(() => {
-    // Clear registry before each test
-    (useMethodRegistry as any).methods = new Map();
+    // Clear registry before each test - use clear() method on each type map
+    const methods = (useMethodRegistry as any).methods;
+    if (methods && typeof methods.clear === 'function') {
+      methods.clear();
+    }
     registerBuiltinUseMethods();
   });
 
@@ -830,7 +949,11 @@ describe('use-methods - 边界情况', () => {
 
 describe('use-methods - registerBuiltinUseMethods', () => {
   it('should register all builtin methods', () => {
-    (useMethodRegistry as any).methods = new Map();
+    // Clear registry
+    const methods = (useMethodRegistry as any).methods;
+    if (methods && typeof methods.clear === 'function') {
+      methods.clear();
+    }
     registerBuiltinUseMethods();
 
     expect(useMethodRegistry.get(UseMethodType.EAT, 'eat')).toBeDefined();
@@ -838,5 +961,396 @@ describe('use-methods - registerBuiltinUseMethods', () => {
     expect(useMethodRegistry.get(UseMethodType.TOOL_ACTIVATE, 'tool_activate')).toBeDefined();
     expect(useMethodRegistry.get(UseMethodType.TOOL_USE, 'tool_use')).toBeDefined();
     expect(useMethodRegistry.get(UseMethodType.GUN_FIRE, 'gun_fire')).toBeDefined();
+  });
+});
+
+describe('use-methods - 容器方法', () => {
+  beforeEach(() => {
+    registerBuiltinUseMethods();
+  });
+
+  describe('containerOpenMethod', () => {
+    it('应该打开有内容的容器', () => {
+      const contentType = new ItemType({
+        id: createItemTypeId('coin'),
+        name: '硬币',
+        weight: 1 as any,
+        volume: 1 as any,
+        stackable: true,
+        stackSize: 1,
+        category: 'misc' as any,
+        material: ['steel' as any],
+        symbol: '?',
+        color: 'white',
+      });
+
+      const contents = new ItemContents().addItem(Item.create(contentType));
+      const item = createTestItem({
+        id: 'bag',
+        name: '袋子',
+        contents: contents,
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const canOpen = containerOpenMethod.canUse!(item, context);
+      expect(canOpen).toBe(true);
+
+      const result = containerOpenMethod.use(item, context);
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('打开');
+    });
+
+    it('空容器不能打开', () => {
+      const item = createTestItem({
+        id: 'empty_box',
+        name: '空盒子',
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const canOpen = containerOpenMethod.canUse!(item, context);
+      expect(canOpen).toBe(false);
+    });
+  });
+
+  describe('containerCloseMethod', () => {
+    it('应该关闭容器', () => {
+      const item = createTestItem({
+        id: 'box',
+        name: '盒子',
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = containerCloseMethod.use(item, context);
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('关闭');
+    });
+  });
+});
+
+describe('use-methods - 书籍方法', () => {
+  beforeEach(() => {
+    registerBuiltinUseMethods();
+  });
+
+  describe('bookReadMethod', () => {
+    it('应该允许阅读书籍', () => {
+      const item = createTestItem({
+        id: 'skill_book',
+        name: '技能书',
+        isBook: true,
+        book: {
+          level: 5,
+          skill: 'cooking',
+          skillLevel: 3,
+        },
+      });
+
+      const context: UseContext = {
+        user: { skills: Map() },
+        currentTime: Date.now(),
+      };
+
+      const result = bookReadMethod.use(item, context);
+      expect(result.success).toBe(true);
+      expect(result.sideEffects).toBeDefined();
+      expect(result.sideEffects?.some(e => e.type === 'skill')).toBe(true);
+    });
+
+    it('应该检查技能要求', () => {
+      const item = createTestItem({
+        id: 'advanced_book',
+        name: '高级书籍',
+        isBook: true,
+        book: {
+          level: 10,
+          requiredSkill: 'cooking',
+          requiredLevel: 5,
+        },
+      });
+
+      const context: UseContext = {
+        user: { skills: Map() },
+        currentTime: Date.now(),
+      };
+
+      const canRead = bookReadMethod.canUse!(item, context);
+      expect(canRead).toBe(false);
+    });
+
+    it('有足够技能应该能阅读', () => {
+      const item = createTestItem({
+        id: 'advanced_book',
+        name: '高级书籍',
+        isBook: true,
+        book: {
+          level: 10,
+          requiredSkill: 'cooking',
+          requiredLevel: 5,
+        },
+      });
+
+      const context: UseContext = {
+        user: { skills: Map().set('cooking', 5) },
+        currentTime: Date.now(),
+      };
+
+      const canRead = bookReadMethod.canUse!(item, context);
+      expect(canRead).toBe(true);
+    });
+  });
+});
+
+describe('use-methods - 护甲方法', () => {
+  beforeEach(() => {
+    registerBuiltinUseMethods();
+  });
+
+  describe('armorWearMethod', () => {
+    it('应该穿戴护甲', () => {
+      const item = createTestItem({
+        id: 'shirt',
+        name: '衬衫',
+        isArmor: true,
+        armor: {
+          coverage: 90,
+          encumbrance: 2,
+        },
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = armorWearMethod.use(item, context);
+      expect(result.success).toBe(true);
+      expect(result.resultingItem?.active).toBe(true);
+    });
+
+    it('已穿戴的护甲不能再次穿戴', () => {
+      const item = createTestItem({
+        id: 'jacket',
+        name: '夹克',
+        isArmor: true,
+        active: true,
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const canWear = armorWearMethod.canUse!(item, context);
+      expect(canWear).toBe(false);
+    });
+
+    it('损坏的护甲不能穿戴', () => {
+      const item = createTestItem({
+        id: 'broken_armor',
+        name: '损坏的护甲',
+        isArmor: true,
+        damage: 4000,
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const canWear = armorWearMethod.canUse!(item, context);
+      expect(canWear).toBe(false);
+    });
+  });
+
+  describe('armorRemoveMethod', () => {
+    it('应该脱下护甲', () => {
+      const item = createTestItem({
+        id: 'helmet',
+        name: '头盔',
+        isArmor: true,
+        active: true,
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = armorRemoveMethod.use(item, context);
+      expect(result.success).toBe(true);
+      expect(result.resultingItem?.active).toBe(false);
+    });
+
+    it('未穿戴的护甲不能脱下', () => {
+      const item = createTestItem({
+        id: 'vest',
+        name: '背心',
+        isArmor: true,
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const canRemove = armorRemoveMethod.canUse!(item, context);
+      expect(canRemove).toBe(false);
+    });
+  });
+});
+
+describe('use-methods - 武器攻击方法', () => {
+  beforeEach(() => {
+    registerBuiltinUseMethods();
+  });
+
+  describe('weaponAttackMethod', () => {
+    it('枪械攻击应该消耗弹药并造成伤害', () => {
+      const item = createTestItem({
+        id: 'rifle',
+        name: '步枪',
+        isGun: true,
+        charges: 10,
+        gun: {
+          rangedDamage: 30,
+          ammoToFire: 1,
+        },
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = weaponAttackMethod.use(item, context);
+      expect(result.success).toBe(true);
+      expect(result.resultingItem?.charges).toBe(9);
+      expect(result.sideEffects?.some(e => e.type === 'damage' && e.value === 30)).toBe(true);
+    });
+
+    it('没有弹药的枪械不能攻击', () => {
+      const item = createTestItem({
+        id: 'pistol',
+        name: '手枪',
+        isGun: true,
+        charges: 0,
+        gun: {
+          rangedDamage: 25,
+        },
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const canAttack = weaponAttackMethod.canUse!(item, context);
+      expect(canAttack).toBe(false);
+    });
+
+    it('近战武器应该造成伤害', () => {
+      const item = createTestItem({
+        id: 'knife',
+        name: '刀',
+        isWeapon: true,
+        category: 'WEAPON',
+        generic: {
+          cut: 15,
+          toHit: 2,
+        },
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = weaponAttackMethod.use(item, context);
+      expect(result.success).toBe(true);
+      expect(result.sideEffects?.some(e => e.type === 'damage' && e.value === 15)).toBe(true);
+    });
+
+    it('应该使用 bash 或 cut 中较大的值', () => {
+      const item = createTestItem({
+        id: 'hammer',
+        name: '锤子',
+        isWeapon: true,
+        category: 'WEAPON',
+        generic: {
+          bash: 20,
+          cut: 5,
+        },
+      });
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = weaponAttackMethod.use(item, context);
+      expect(result.sideEffects?.some(e => e.type === 'damage' && e.value === 20)).toBe(true);
+    });
+  });
+});
+
+describe('use-methods - 副作用应用', () => {
+  describe('applySideEffects', () => {
+    it('应该应用所有类型的副作用', () => {
+      const sideEffects: UseSideEffect[] = [
+        { type: 'effect', id: 'heal', value: 10, message: '你恢复了生命' },
+        { type: 'skill', id: 'cooking', value: 1, message: '你获得了烹饪经验' },
+        { type: 'stat', id: 'stamina', value: -5, message: '你消耗了体力' },
+        { type: 'damage', value: 20, message: '你造成了 20 点伤害' },
+        { type: 'heal', value: 15, message: '你恢复了 15 点生命' },
+      ];
+
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = applySideEffects(sideEffects, context);
+
+      expect(result.success).toBe(true);
+      expect(result.appliedCount).toBe(5);
+      expect(result.messages.length).toBe(5);
+      expect(result.failedEffects.length).toBe(0);
+    });
+
+    it('空副作用数组应该返回成功', () => {
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = applySideEffects([], context);
+
+      expect(result.success).toBe(true);
+      expect(result.appliedCount).toBe(0);
+    });
+
+    it('undefined 副作用应该返回成功', () => {
+      const context: UseContext = {
+        user: {},
+        currentTime: Date.now(),
+      };
+
+      const result = applySideEffects(undefined, context);
+
+      expect(result.success).toBe(true);
+      expect(result.appliedCount).toBe(0);
+    });
   });
 });

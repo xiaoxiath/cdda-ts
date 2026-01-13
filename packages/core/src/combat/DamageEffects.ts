@@ -298,14 +298,16 @@ export class DamageEffectsManager {
       stacks: 1,
     };
 
-    // 如果效果可叠加，查找现有效果
-    if (effectDef.stackable) {
-      const existingIndex = this.activeEffects.findIndex(
-        e => e.def.id === effectDef.id && e.bodyPart === bodyPart
-      );
+    // 查找现有同类型同部位的效果
+    const existingIndex = this.activeEffects.findIndex(
+      e => e.def.id === effectDef.id && e.bodyPart === bodyPart
+    );
 
-      if (existingIndex >= 0) {
-        const existing = this.activeEffects.get(existingIndex)!;
+    if (existingIndex >= 0) {
+      const existing = this.activeEffects.get(existingIndex)!;
+
+      if (effectDef.stackable) {
+        // 可叠加效果：增加层数
         const stacked = {
           ...existing,
           stacks: existing.stacks + 1,
@@ -314,6 +316,15 @@ export class DamageEffectsManager {
         };
         return new DamageEffectsManager(
           this.activeEffects.set(existingIndex, stacked)
+        );
+      } else {
+        // 不可叠加效果：替换为新效果
+        const replaced = {
+          ...newEffect,
+          stacks: 1,
+        };
+        return new DamageEffectsManager(
+          this.activeEffects.set(existingIndex, replaced)
         );
       }
     }

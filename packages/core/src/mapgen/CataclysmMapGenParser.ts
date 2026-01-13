@@ -79,6 +79,139 @@ export interface NestedMapConfig {
 }
 
 /**
+ * 战利品放置配置（增强版，支持 repeat）
+ */
+export interface LootPlacementConfig {
+  /** 物品 ID */
+  item?: string;
+  /** 物品组 ID */
+  group?: string;
+  /** 放置位置 */
+  x?: number | [number, number];
+  y?: number | [number, number];
+  /** 生成概率 (0-100) */
+  chance?: number;
+  /** 物品数量范围 */
+  count?: [number, number];
+  /** 物品的状态（如电荷） */
+  charges?: [number, number];
+  /** 重复次数范围 */
+  repeat?: [number, number];
+}
+
+/**
+ * 区域放置配置
+ */
+export interface ZonePlacementConfig {
+  /** 区域类型 */
+  type: string;
+  /** 阵营 ID */
+  faction?: string;
+  /** 区域范围 */
+  x?: number | [number, number];
+  y?: number | [number, number];
+}
+
+/**
+ * 自动售货机配置（字符映射）
+ */
+export interface VendingMachineConfig {
+  /** 物品组 ID */
+  item_group?: string;
+  /** 是否可掠夺 */
+  lootable?: boolean;
+}
+
+/**
+ * 计算机配置（字符映射）
+ */
+export interface ComputerConfig {
+  /** 计算机名称 */
+  name?: string;
+  /** 访问拒绝消息 */
+  access_denied?: string;
+  /** 安全等级 */
+  security?: number;
+  /** 事件触发器列表 */
+  eocs?: string[];
+  /** 聊天话题列表 */
+  chat_topics?: string[];
+}
+
+/**
+ * 放置的自动售货机配置
+ */
+export interface PlacedVendingMachineConfig {
+  /** 物品组 ID */
+  item_group: string;
+  /** X 坐标 */
+  x: number;
+  /** Y 坐标 */
+  y: number;
+  /** 是否可掠夺 */
+  lootable?: boolean;
+}
+
+/**
+ * 封印物品配置
+ */
+export interface SealedItemConfig {
+  /** 物品配置 */
+  items?: ItemPlacementConfig | { item: string; chance?: number };
+  /** 家具 ID */
+  furniture?: string;
+  /** 生成概率 */
+  chance?: number;
+}
+
+/**
+ * 阵营所有者配置
+ */
+export interface FactionOwnerConfig {
+  /** 阵营 ID */
+  id: string;
+  /** 区域范围 */
+  x?: number | [number, number];
+  y?: number | [number, number];
+}
+
+/**
+ * 地形/家具变换配置
+ */
+export interface TerFurnTransformConfig {
+  /** 变换 ID */
+  transform: string;
+}
+
+/**
+ * 液体配置
+ */
+export interface LiquidConfig {
+  /** 液体 ID */
+  liquid: string;
+  /** 数量范围 */
+  amount: [number, number];
+}
+
+/**
+ * 怪物配置（字符映射）
+ */
+export interface MonsterCharMapping {
+  /** 怪物 ID 或怪物组 ID */
+  monster: string;
+}
+
+/**
+ * 加油站配置
+ */
+export interface GasPumpConfig {
+  /** 燃料类型 */
+  fuel?: string;
+  /** 数量范围 */
+  amount?: [number, number];
+}
+
+/**
  * 调色板数据
  *
  * 定义可重用的地形和家具映射
@@ -140,11 +273,17 @@ export interface MapGenObjectConfig {
   /** 物品放置列表 */
   place_items?: ItemPlacementConfig[];
 
+  /** 战利品放置列表（支持 repeat） */
+  place_loot?: LootPlacementConfig[];
+
   /** 怪物放置列表（旧名称） */
   place_monster?: MonsterPlacementConfig[];
 
   /** 怪物放置列表（新名称） */
   place_monsters?: MonsterPlacementConfig[];
+
+  /** 字符到怪物的映射 */
+  monsters?: Record<string, MonsterCharMapping>;
 
   /** 嵌套地图放置列表 */
   place_nested?: Array<{
@@ -178,8 +317,35 @@ export interface MapGenObjectConfig {
   /** NPC 放置 */
   place_npcs?: Array<Record<string, unknown>>;
 
-  /** 区域设置 */
-  place_zones?: Array<Record<string, unknown>>;
+  /** 区域放置 */
+  place_zones?: ZonePlacementConfig[];
+
+  /** 字符到厕所的映射（空对象作为标记） */
+  toilets?: Record<string, Record<string, never>>;
+
+  /** 字符到加油站的映射 */
+  gaspumps?: Record<string, GasPumpConfig>;
+
+  /** 字符到自动售货机的映射 */
+  vendingmachines?: Record<string, VendingMachineConfig>;
+
+  /** 放置的自动售货机列表 */
+  place_vendingmachines?: PlacedVendingMachineConfig[];
+
+  /** 字符到计算机的映射 */
+  computers?: Record<string, ComputerConfig>;
+
+  /** 字符到封印物品的映射 */
+  sealed_item?: Record<string, SealedItemConfig>;
+
+  /** 阵营所有者 */
+  faction_owner?: FactionOwnerConfig[];
+
+  /** 字符到地形/家具变换的映射 */
+  ter_furn_transforms?: Record<string, TerFurnTransformConfig>;
+
+  /** 字符到液体的映射 */
+  liquids?: Record<string, LiquidConfig>;
 
   /** 其他未处理字段 */
   [key: string]: unknown;
@@ -243,6 +409,9 @@ export interface ParsedMapGenData {
   /** 嵌套地图生成 ID */
   nestedId?: string;
 
+  /** 更新地图生成 ID */
+  updateMapgenId?: string;
+
   /** 调色板引用列表（支持参数化引用） */
   palettes?: PaletteReference[];
 
@@ -273,8 +442,14 @@ export interface ParsedMapGenData {
   /** 物品放置列表 */
   placeItems: ItemPlacementConfig[];
 
+  /** 战利品放置列表（支持 repeat） */
+  placeLoot: LootPlacementConfig[];
+
   /** 怪物放置列表 */
   placeMonsters: MonsterPlacementConfig[];
+
+  /** 字符到怪物的映射 */
+  monsters: Map<string, MonsterCharMapping>;
 
   /** 嵌套地图放置列表 */
   placeNested: Array<{
@@ -289,6 +464,36 @@ export interface ParsedMapGenData {
 
   /** 标志 */
   flags: Set<string>;
+
+  /** 区域放置列表 */
+  placeZones: ZonePlacementConfig[];
+
+  /** 字符到厕所的映射 */
+  toilets: Map<string, Record<string, never>>;
+
+  /** 字符到加油站的映射 */
+  gaspumps: Map<string, GasPumpConfig>;
+
+  /** 字符到自动售货机的映射 */
+  vendingmachines: Map<string, VendingMachineConfig>;
+
+  /** 放置的自动售货机列表 */
+  placeVendingMachines: PlacedVendingMachineConfig[];
+
+  /** 字符到计算机的映射 */
+  computers: Map<string, ComputerConfig>;
+
+  /** 字符到封印物品的映射 */
+  sealedItem: Map<string, SealedItemConfig>;
+
+  /** 阵营所有者列表 */
+  factionOwner: FactionOwnerConfig[];
+
+  /** 字符到地形/家具变换的映射 */
+  terFurnTransforms: Map<string, TerFurnTransformConfig>;
+
+  /** 字符到液体的映射 */
+  liquids: Map<string, LiquidConfig>;
 
   /** 前驱地图生成器 */
   predecessorMapgen?: string;
@@ -326,6 +531,14 @@ export class CataclysmMapGenParser {
     const furniture = new Map<string, FurnitureMapping>();
     const items = new Map<string, ItemPlacementConfig>();
     const nested = new Map<string, NestedMapConfig>();
+    const toilets = new Map<string, Record<string, never>>();
+    const gaspumps = new Map<string, GasPumpConfig>();
+    const vendingmachines = new Map<string, VendingMachineConfig>();
+    const computers = new Map<string, ComputerConfig>();
+    const sealedItem = new Map<string, SealedItemConfig>();
+    const monsters = new Map<string, MonsterCharMapping>();
+    const terFurnTransforms = new Map<string, TerFurnTransformConfig>();
+    const liquids = new Map<string, LiquidConfig>();
 
     if (obj.terrain) {
       Object.entries(obj.terrain).forEach(([char, mapping]) => {
@@ -351,6 +564,55 @@ export class CataclysmMapGenParser {
       });
     }
 
+    // 解析新特性映射
+    if (obj.toilets) {
+      Object.entries(obj.toilets).forEach(([char, config]) => {
+        toilets.set(char, config);
+      });
+    }
+
+    if (obj.gaspumps) {
+      Object.entries(obj.gaspumps).forEach(([char, config]) => {
+        gaspumps.set(char, config);
+      });
+    }
+
+    if (obj.vendingmachines) {
+      Object.entries(obj.vendingmachines).forEach(([char, config]) => {
+        vendingmachines.set(char, config);
+      });
+    }
+
+    if (obj.computers) {
+      Object.entries(obj.computers).forEach(([char, config]) => {
+        computers.set(char, config);
+      });
+    }
+
+    if (obj.sealed_item) {
+      Object.entries(obj.sealed_item).forEach(([char, config]) => {
+        sealedItem.set(char, config);
+      });
+    }
+
+    if (obj.monsters) {
+      Object.entries(obj.monsters).forEach(([char, config]) => {
+        monsters.set(char, config);
+      });
+    }
+
+    if (obj.ter_furn_transforms) {
+      Object.entries(obj.ter_furn_transforms).forEach(([char, config]) => {
+        terFurnTransforms.set(char, config);
+      });
+    }
+
+    if (obj.liquids) {
+      Object.entries(obj.liquids).forEach(([char, config]) => {
+        liquids.set(char, config);
+      });
+    }
+
     // 解析标志
     const flags = new Set<string>(obj.flags || []);
 
@@ -359,6 +621,9 @@ export class CataclysmMapGenParser {
 
     // 解析物品放置
     const placeItems = obj.place_items || [];
+
+    // 解析战利品放置
+    const placeLoot = obj.place_loot || [];
 
     // 解析怪物放置（合并新旧字段名）
     const placeMonsters = [
@@ -373,6 +638,15 @@ export class CataclysmMapGenParser {
       y: n.y || 0,
       z: n.z,
     }));
+
+    // 解析区域放置
+    const placeZones = obj.place_zones || [];
+
+    // 解析放置的自动售货机
+    const placeVendingMachines = obj.place_vendingmachines || [];
+
+    // 解析阵营所有者
+    const factionOwner = obj.faction_owner || [];
 
     // 生成 ID
     let id = json.nested_mapgen_id;
@@ -391,6 +665,10 @@ export class CataclysmMapGenParser {
       }
     }
 
+    if (!id && json.update_mapgen_id) {
+      id = json.update_mapgen_id;
+    }
+
     if (!id) {
       id = `mapgen_${Date.now()}_${Math.random()}`;
     }
@@ -399,6 +677,7 @@ export class CataclysmMapGenParser {
       id,
       omTerrain: json.om_terrain,
       nestedId: json.nested_mapgen_id,
+      updateMapgenId: json.update_mapgen_id,
       weight: json.weight,
       width,
       height,
@@ -408,10 +687,22 @@ export class CataclysmMapGenParser {
       furniture,
       items,
       placeItems,
+      placeLoot,
       placeMonsters,
+      monsters,
       placeNested,
       nested,
       flags,
+      placeZones,
+      toilets,
+      gaspumps,
+      vendingmachines,
+      placeVendingMachines,
+      computers,
+      sealedItem,
+      factionOwner,
+      terFurnTransforms,
+      liquids,
       palettes,
       predecessorMapgen: obj.predecessor_mapgen,
       raw: json,
@@ -449,8 +740,13 @@ export class CataclysmMapGenParser {
   static validate(parsed: ParsedMapGenData): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    // 检查是否有 rows 或 fill_ter
-    if (parsed.rows.length === 0 && !parsed.fillTerrain) {
+    // 特殊类型检查：嵌套地图和更新地图可以没有 rows 或 fill_ter
+    const isNestedMapgen = !!parsed.nestedId && !parsed.omTerrain;
+    const isUpdateMapgen = !!parsed.updateMapgenId;
+    const isSpecialMapgen = isNestedMapgen || isUpdateMapgen;
+
+    // 对于普通 mapgen，检查是否有 rows 或 fill_ter
+    if (!isSpecialMapgen && parsed.rows.length === 0 && !parsed.fillTerrain) {
       errors.push('Must have either rows or fill_ter');
     }
 
@@ -468,7 +764,7 @@ export class CataclysmMapGenParser {
 
     // 检查是否有 ID
     if (!parsed.id) {
-      errors.push('Must have an ID (nested_mapgen_id or om_terrain)');
+      errors.push('Must have an ID (nested_mapgen_id, om_terrain, or update_mapgen_id)');
     }
 
     return {

@@ -3,9 +3,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Map } from 'immutable';
 import { EffectManager } from '../EffectManager';
 import { EffectDefinition, EffectDefinitions } from '../EffectDefinition';
-import { EffectCategory } from '../types';
+import { EffectCategory, EffectModifierType } from '../types';
 
 describe('EffectManager', () => {
   let manager: EffectManager;
@@ -296,6 +297,85 @@ describe('EffectManager', () => {
       expect(value1).toBe(2);
       expect(value2).toBe(2);
     });
+
+    it('should calculate armor modifier', () => {
+      // 创建一个提供护甲加成的效果
+      const armorBuff = EffectDefinition.create({
+        id: 'armor_buff' as any,
+        name: '护甲强化',
+        description: '增加护甲',
+        category: EffectCategory.BUFF,
+        modifiers: [
+          { type: EffectModifierType.ARMOR_ADD, target: 'all', value: 5 },
+          { type: EffectModifierType.ARMOR_BONUS, target: 'BASH', value: 3 },
+        ],
+      });
+
+      const armorManager = EffectManager.create([armorBuff]);
+      const updated = armorManager.applyEffect('armor_buff' as any, fixedTime);
+
+      // 'all' 只获取 target='all' 的修饰符: 5 (ADD)
+      const allArmor = updated.getArmorModifier('all');
+      expect(allArmor).toBe(5);
+
+      // 'BASH' 获取 target='all' + target='BASH': 5 (ADD) + 3 (BONUS) = 8
+      const bashArmor = updated.getArmorModifier('BASH' as any);
+      expect(bashArmor).toBe(8);
+
+      // 'CUT' 只获取 target='all': 5 (ADD)
+      const cutArmor = updated.getArmorModifier('CUT' as any);
+      expect(cutArmor).toBe(5);
+    });
+
+    it('should calculate armor modifier with multiply', () => {
+      const armorBuff = EffectDefinition.create({
+        id: 'armor_multiply' as any,
+        name: '护甲倍增',
+        description: '护甲倍增',
+        category: EffectCategory.BUFF,
+        modifiers: [
+          { type: EffectModifierType.ARMOR_ADD, target: 'all', value: 10 },
+          { type: EffectModifierType.ARMOR_MULTIPLY, target: 'all', value: 0.5 },
+        ],
+      });
+
+      const armorManager = EffectManager.create([armorBuff]);
+      const updated = armorManager.applyEffect('armor_multiply' as any, fixedTime);
+
+      // (10 + 0) * (1 + 0.5) = 15
+      const armor = updated.getArmorModifier('all');
+      expect(armor).toBe(15);
+    });
+
+    it('should respect body part for armor modifier', () => {
+      // 创建一个局部护甲效果（只影响左臂）
+      const bpMap = Map([
+        ['ARM_L' as any, 50],
+      ]);
+
+      const localArmorBuff = EffectDefinition.create({
+        id: 'local_armor' as any,
+        name: '局部护甲',
+        description: '左臂护甲',
+        category: EffectCategory.BUFF,
+        modifiers: [
+          { type: EffectModifierType.ARMOR_ADD, target: 'all', value: 8 },
+        ],
+        bpAffected: bpMap,
+        isLocal: true,
+      });
+
+      const armorManager = EffectManager.create([localArmorBuff]);
+      const updated = armorManager.applyEffect('local_armor' as any, fixedTime);
+
+      // 左臂有护甲加成
+      const armLArmor = updated.getArmorModifier('all', 'ARM_L' as any);
+      expect(armLArmor).toBe(8);
+
+      // 右臂没有护甲加成
+      const armRArmor = updated.getArmorModifier('all', 'ARM_R' as any);
+      expect(armRArmor).toBe(0);
+    });
   });
 
   describe('statistics', () => {
@@ -356,6 +436,144 @@ describe('EffectManager', () => {
     it('should show no effects message when empty', () => {
       const list = manager.getEffectListString(fixedTime);
       expect(list).toBe('没有活跃效果');
+    });
+  });
+
+  // ========== 效果交互测试 ==========
+
+  describe('effect interactions', () => {
+    it('should check effect immunity', () => {
+      // 创建一个对 "poison_weak" 免疫的效果定义
+      const immuneBuff = EffectDefinition.create({
+        id: 'immune_to_poison' as any,
+        name: '抗毒体质',
+        description: '免疫弱中毒',
+        category: EffectCategory.BUFF,
+        effectImmunities: ['poison_weak' as any],
+      });
+
+      const immuneManager = EffectManager.create([immuneBuff, EffectDefinitions.POISON_WEAK]);
+
+      // 应用免疫效果
+      let updated = immuneManager.applyEffect('immune_to_poison' as any, fixedTime);
+
+      // 尝试应用中毒效果 - 应该被免疫
+      updated = updated.applyEffect('poison_weak' as any, fixedTime);
+
+      // 中毒效果不应该被应用
+      expect(updated.getEffectCount()).toBe(1);
+      expect(updated.getEffect('poison_weak' as any)).toBeUndefined();
+      expect(updated.getEffect('immune_to_poison' as any)).toBeDefined();
+    });
+
+    it('should reduce effect duration from other effects', () => {
+      // 创建一个减少中毒持续时间的效果
+      const durationReducer = EffectDefinition.create({
+        id: 'poison_resist' as any,
+        name: '抗毒',
+        description: '减少中毒持续时间',
+        category: EffectCategory.BUFF,
+        reducesDuration: Map([['poison_weak' as any, 30000]]), // 减少30秒
+      });
+
+      const reducerManager = EffectManager.create([
+        durationReducer,
+        EffectDefinitions.POISON_WEAK,
+      ]);
+
+      // 先应用减少持续时间的效果
+      let updated = reducerManager.applyEffect('poison_resist' as any, fixedTime);
+
+      // 再应用中毒效果
+      updated = updated.applyEffect('poison_weak' as any, fixedTime);
+
+      const poisonEffect = updated.getEffect('poison_weak' as any);
+      expect(poisonEffect).toBeDefined();
+
+      // 原始持续时间是60秒，应该被减少到30秒
+      expect(poisonEffect!.duration).toBeLessThan(60000);
+      expect(poisonEffect!.duration).toBeGreaterThan(0);
+    });
+
+    it('should prevent effect when duration reduced to zero', () => {
+      // 创建一个完全抵消中毒的效果
+      const fullImmunity = EffectDefinition.create({
+        id: 'full_poison_immunity' as any,
+        name: '完全抗毒',
+        description: '完全免疫中毒',
+        category: EffectCategory.BUFF,
+        reducesDuration: Map([['poison_weak' as any, 999999]]), // 减少大量时间
+      });
+
+      const immunityManager = EffectManager.create([
+        fullImmunity,
+        EffectDefinitions.POISON_WEAK,
+      ]);
+
+      // 先应用免疫效果
+      let updated = immunityManager.applyEffect('full_poison_immunity' as any, fixedTime);
+
+      // 再应用中毒效果
+      updated = updated.applyEffect('poison_weak' as any, fixedTime);
+
+      // 中毒效果应该立即过期
+      expect(updated.getEffect('poison_weak' as any)).toBeUndefined();
+    });
+
+    it('should check kill effects', () => {
+      // 创建一个可以致死的效果
+      const deadlyEffect = EffectDefinition.create({
+        id: 'deadly_poison' as any,
+        name: '剧毒',
+        description: '致命毒素',
+        category: EffectCategory.POISON,
+        canKill: true,
+        killMessage: '你死于剧毒！',
+      });
+
+      const deadlyManager = EffectManager.create([deadlyEffect]);
+
+      // 应用致死效果
+      const updated = deadlyManager.applyEffect('deadly_poison' as any, fixedTime);
+
+      // 检查致死效果
+      const killEffects = updated.checkKillEffects();
+      expect(killEffects.size).toBe(1);
+      expect(killEffects.first()?.definition.id).toBe('deadly_poison');
+
+      // 获取死亡消息
+      const killMessage = updated.getKillMessage();
+      expect(killMessage).toBe('你死于剧毒！');
+    });
+
+    it('should return null when no kill effects present', () => {
+      const killMessage = manager.getKillMessage();
+      expect(killMessage).toBeNull();
+
+      const killEffects = manager.checkKillEffects();
+      expect(killEffects.size).toBe(0);
+    });
+
+    it('should check if effect will expire immediately', () => {
+      const reducer = EffectDefinition.create({
+        id: 'strong_reducer' as any,
+        name: '强效抵抗',
+        description: '大幅减少效果持续时间',
+        category: EffectCategory.BUFF,
+        reducesDuration: Map([['poison_weak' as any, 999999]]),
+      });
+
+      const reducerManager = EffectManager.create([
+        reducer,
+        EffectDefinitions.POISON_WEAK,
+      ]);
+
+      // 先应用抵抗效果
+      let updated = reducerManager.applyEffect('strong_reducer' as any, fixedTime);
+
+      // 检查中毒效果是否会立即过期
+      const willExpire = updated.willExpireImmediately('poison_weak' as any);
+      expect(willExpire).toBe(true);
     });
   });
 });

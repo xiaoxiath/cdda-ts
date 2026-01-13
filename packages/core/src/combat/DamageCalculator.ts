@@ -416,7 +416,7 @@ export class DamageCalculator {
     distribution: 'equal' | 'random' | 'weighted' = 'equal',
     weights?: Map<BodyPartId, number>
   ): Map<BodyPartId, DamageAmount> {
-    const result = Map<BodyPartId, DamageAmount>();
+    let result = Map<BodyPartId, DamageAmount>();
 
     if (bodyParts.length === 0) {
       return result;
@@ -425,19 +425,19 @@ export class DamageCalculator {
     if (distribution === 'equal') {
       const perPart = Math.floor(totalDamage / bodyParts.length);
       for (const part of bodyParts) {
-        result.set(part, perPart);
+        result = result.set(part, perPart);
       }
     } else if (distribution === 'random') {
       for (const part of bodyParts) {
         const share = Math.random() * totalDamage;
-        result.set(part, Math.floor(share));
+        result = result.set(part, Math.floor(share));
       }
     } else if (distribution === 'weighted' && weights) {
       const totalWeight = weights.valueSeq().reduce((sum, w) => sum + w, 0);
       for (const part of bodyParts) {
         const weight = weights.get(part) ?? 1;
         const share = (totalDamage * weight) / totalWeight;
-        result.set(part, Math.floor(share));
+        result = result.set(part, Math.floor(share));
       }
     }
 

@@ -410,7 +410,7 @@ export class MeleeCombat {
 
     // 根据武器重量调整
     const weaponWeight = character.getWeaponWeight?.() ?? 0;
-    baseCost += weaponWeight * 2;
+    baseCost += Math.floor(weaponWeight * 0.5);
 
     // 暴击消耗更多
     if (attackResult.critical) {

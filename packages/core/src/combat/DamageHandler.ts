@@ -126,6 +126,25 @@ export class DamageHandler {
     const events: DamageEvent[] = [];
     const triggeredEffects: EffectTypeId[] = [];
 
+    // 处理空伤害实例（算作命中但无伤害）
+    if (damage.damageUnits.size === 0) {
+      return {
+        hit: true,
+        totalRawDamage: 0,
+        totalActualDamage: 0,
+        bodyPartResults: Map(),
+        killed: false,
+        disabled: false,
+        triggeredEffects,
+        events: [{
+          type: 'damage',
+          amount: 0,
+          message: '空伤害实例（无伤害）',
+        }],
+        currentHP: creature.getBodyPartHP().map((hp: BodyPartHPData) => hp.currentHP),
+      };
+    }
+
     // 检查免疫
     let immuneTo = List<DamageTypeId>();
     for (const unit of damage.damageUnits) {
@@ -477,5 +496,122 @@ export class DamageHandler {
     if (ratio <= 0.5) return '受伤';
     if (ratio <= 0.75) return '轻伤';
     return '健康';
+  }
+
+  // ========== Kill 机制集成 ==========
+
+  /**
+   * 检查效果管理器中是否有致死效果
+   *
+   * @param effectManager 效果管理器（可选）
+   * @returns 致死效果信息或 null
+   */
+  static checkKillEffects(
+    effectManager?: { checkKillEffects(): any; getKillMessage(): string | null }
+  ): { hasKillEffect: boolean; killMessage: string | null } {
+    if (!effectManager) {
+      return { hasKillEffect: false, killMessage: null };
+    }
+
+    const killEffects = effectManager.checkKillEffects();
+    if (killEffects && killEffects.size > 0) {
+      return {
+        hasKillEffect: true,
+        killMessage: effectManager.getKillMessage(),
+      };
+    }
+
+    return { hasKillEffect: false, killMessage: null };
+  }
+
+  /**
+   * 应用致死效果
+   *
+   * @param creature 目标生物
+   * @param effectManager 效果管理器（可选）
+   * @returns 伤害应用结果
+   */
+  static applyKillEffect(
+    creature: DamageableCreature,
+    effectManager?: { checkKillEffects(): any; getKillMessage(): string | null }
+  ): DamageApplicationResult {
+    const { hasKillEffect, killMessage } = DamageHandler.checkKillEffects(effectManager);
+
+    const events: DamageEvent[] = [];
+
+    if (hasKillEffect) {
+      events.push({
+        type: 'death',
+        message: killMessage || '角色因效果死亡',
+      });
+
+      // 调用死亡回调
+      if (creature.onDeath) {
+        creature.onDeath();
+      }
+
+      return {
+        hit: false,
+        totalRawDamage: 0,
+        totalActualDamage: 0,
+        bodyPartResults: Map(),
+        killed: true,
+        disabled: false,
+        triggeredEffects: [],
+        events,
+        currentHP: creature.getBodyPartHP().map((hp: BodyPartHPData) => 0),
+      };
+    }
+
+    // 没有致死效果
+    return {
+      hit: false,
+      totalRawDamage: 0,
+      totalActualDamage: 0,
+      bodyPartResults: Map(),
+      killed: false,
+      disabled: false,
+      triggeredEffects: [],
+      events,
+      currentHP: creature.getBodyPartHP().map((hp: BodyPartHPData) => hp.currentHP),
+    };
+  }
+
+  /**
+   * 综合伤害和效果检查
+   *
+   * 先应用伤害，再检查是否有致死效果
+   *
+   * @param creature 目标生物
+   * @param damage 伤害实例
+   * @param targetPart 目标身体部位
+   * @param effectManager 效果管理器（可选）
+   * @param critMult 暴击倍数
+   * @returns 伤害应用结果
+   */
+  static applyDamageWithKillCheck(
+    creature: DamageableCreature,
+    damage: DamageInstance,
+    targetPart: BodyPartId | null,
+    effectManager?: { checkKillEffects(): any; getKillMessage(): string | null },
+    critMult: number = 1.0
+  ): DamageApplicationResult {
+    // 先应用伤害
+    const damageResult = DamageHandler.applyDamage(creature, damage, targetPart, critMult);
+
+    // 如果伤害没有致死，检查效果致死
+    if (!damageResult.killed && effectManager) {
+      const killResult = DamageHandler.applyKillEffect(creature, effectManager);
+      if (killResult.killed) {
+        // 合并事件
+        return {
+          ...damageResult,
+          killed: true,
+          events: [...damageResult.events, ...killResult.events],
+        };
+      }
+    }
+
+    return damageResult;
   }
 }

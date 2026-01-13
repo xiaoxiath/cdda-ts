@@ -46,7 +46,7 @@ describe('Equipment', () => {
     });
 
     it('should have all slots', () => {
-      expect(equipment.slots.size).toBe(17);
+      expect(equipment.slots.size).toBe(31);
     });
   });
 
@@ -305,6 +305,89 @@ describe('Equipment', () => {
 
       // 60 * 1 = 60 armor for HEAD
       expect(equipped.getArmorForBodyPart(EquipmentSlotType.HEAD)).toBe(60);
+    });
+  });
+
+  describe('left/right specific slots', () => {
+    it('should equip to left hand slot', () => {
+      const leftGlove: EquipmentItem = {
+        ...testItem,
+        itemId: 'left_glove',
+        itemName: '左手套',
+        occupiesSlots: [EquipmentSlotType.HAND_L],
+        covers: [EquipmentSlotType.HAND_L],
+        warmth: 3,
+      };
+
+      const equipped = equipment.equip(leftGlove, EquipmentSlots.HAND_L.id);
+      expect(equipped.getEquippedCount(EquipmentSlots.HAND_L.id)).toBe(1);
+      expect(equipped.stats.totalWarmth).toBe(3);
+    });
+
+    it('should equip to right hand slot independently', () => {
+      const leftGlove: EquipmentItem = {
+        ...testItem,
+        itemId: 'left_glove',
+        itemName: '左手套',
+        occupiesSlots: [EquipmentSlotType.HAND_L],
+        covers: [EquipmentSlotType.HAND_L],
+        warmth: 3,
+      };
+
+      const rightGlove: EquipmentItem = {
+        ...testItem,
+        itemId: 'right_glove',
+        itemName: '右手套',
+        occupiesSlots: [EquipmentSlotType.HAND_R],
+        covers: [EquipmentSlotType.HAND_R],
+        warmth: 3,
+      };
+
+      let current = equipment;
+      current = current.equip(leftGlove, EquipmentSlots.HAND_L.id);
+      current = current.equip(rightGlove, EquipmentSlots.HAND_R.id);
+
+      expect(current.getEquippedCount(EquipmentSlots.HAND_L.id)).toBe(1);
+      expect(current.getEquippedCount(EquipmentSlots.HAND_R.id)).toBe(1);
+      expect(current.stats.totalWarmth).toBe(6);
+    });
+
+    it('should equip to left foot slot independently', () => {
+      const leftShoe: EquipmentItem = {
+        ...testItem,
+        itemId: 'left_shoe',
+        itemName: '左鞋',
+        occupiesSlots: [EquipmentSlotType.FOOT_L],
+        covers: [EquipmentSlotType.FOOT_L],
+        warmth: 2,
+      };
+
+      const rightShoe: EquipmentItem = {
+        ...testItem,
+        itemId: 'right_shoe',
+        itemName: '右鞋',
+        occupiesSlots: [EquipmentSlotType.FOOT_R],
+        covers: [EquipmentSlotType.FOOT_R],
+        warmth: 2,
+      };
+
+      let current = equipment;
+      current = current.equip(leftShoe, EquipmentSlots.FOOT_L.id);
+      current = current.equip(rightShoe, EquipmentSlots.FOOT_R.id);
+
+      expect(current.getEquippedCount(EquipmentSlots.FOOT_L.id)).toBe(1);
+      expect(current.getEquippedCount(EquipmentSlots.FOOT_R.id)).toBe(1);
+      expect(current.stats.totalWarmth).toBe(4);
+    });
+
+    it('should find left/right slots by type', () => {
+      const leftSlot = equipment.findSlotByType(EquipmentSlotType.HAND_L);
+      const rightSlot = equipment.findSlotByType(EquipmentSlotType.HAND_R);
+
+      expect(leftSlot).toBeDefined();
+      expect(leftSlot!.type).toBe(EquipmentSlotType.HAND_L);
+      expect(rightSlot).toBeDefined();
+      expect(rightSlot!.type).toBe(EquipmentSlotType.HAND_R);
     });
   });
 

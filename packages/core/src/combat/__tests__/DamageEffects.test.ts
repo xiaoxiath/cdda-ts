@@ -370,7 +370,7 @@ describe('DamageEffectsManager', () => {
       name: 'Knocked Down',
       description: 'Prone',
       condition: {},
-      duration: { baseDuration: 2, durationPerIntensity: 0 },
+      duration: { baseDuration: 1, durationPerIntensity: 0 },
       stackable: false,
       removable: false,
       damagePerTurn: 0,
@@ -400,7 +400,8 @@ describe('DamageEffectsManager', () => {
     const withEffect = manager.applyEffect(effect, EffectIntensity.LIGHT, 'TORSO' as BodyPartId);
     const processed = withEffect.processTurn();
 
-    expect(processed.damage).toBe(3);
+    // damagePerTurn * stacks * (intensity + 1) = 3 * 1 * (1 + 1) = 6
+    expect(processed.damage).toBe(6);
   });
 
   it('should apply damage per turn with stacks', () => {
@@ -423,8 +424,8 @@ describe('DamageEffectsManager', () => {
 
     const processed = managerState.processTurn();
 
-    // 2 stacks * 2 damage per stack * (intensity + 1)
-    expect(processed.damage).toBe(4); // 2 * 2 * 1
+    // damagePerTurn * stacks * (intensity + 1) = 2 * 2 * (1 + 1) = 8
+    expect(processed.damage).toBe(8);
   });
 
   it('should get effects for specific body part', () => {

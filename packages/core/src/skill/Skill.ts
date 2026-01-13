@@ -10,6 +10,8 @@ import type {
   SkillLevel,
   SkillExperience,
   SkillPracticeData,
+  SkillTheoryData,
+  SkillRustData,
   SkillLevelUpResult,
 } from './types';
 import type { SkillDefinition } from './SkillDefinition';
@@ -22,6 +24,8 @@ interface SkillPropsInternal {
   level: SkillLevel;
   experience: SkillExperience;
   practice: SkillPracticeData;
+  theory: SkillTheoryData;
+  rust: SkillRustData;
   isUnlocked: boolean;
 }
 
@@ -29,12 +33,19 @@ interface SkillPropsInternal {
  * 技能实例类
  *
  * 使用不可变数据结构
+ *
+ * 理论/实践双轨系统：
+ * - level: 实践等级（通过实际使用获得）
+ * - theory.theoryLevel: 理论等级（通过学习获得）
+ * - 理论会随时间转化为实践经验
  */
 export class Skill {
   readonly definition!: SkillDefinition;
   readonly level!: SkillLevel;
   readonly experience!: SkillExperience;
   readonly practice!: SkillPracticeData;
+  readonly theory!: SkillTheoryData;
+  readonly rust!: SkillRustData;
   readonly isUnlocked!: boolean;
 
   private constructor(props: SkillPropsInternal) {
@@ -42,10 +53,14 @@ export class Skill {
     this.level = props.level;
     this.experience = props.experience;
     this.practice = props.practice;
+    this.theory = props.theory;
+    this.rust = props.rust;
     this.isUnlocked = props.isUnlocked;
 
     Object.freeze(this);
     Object.freeze(this.practice);
+    Object.freeze(this.theory);
+    Object.freeze(this.rust);
   }
 
   // ========== 工厂方法 ==========
@@ -62,6 +77,17 @@ export class Skill {
         practiceCount: 0,
         lastPracticed: 0,
         isDecaying: false,
+      },
+      theory: {
+        theoryLevel: 0,
+        theoryExperience: 0,
+        lastStudied: 0,
+      },
+      rust: {
+        isRusted: false,
+        rustLevel: 0,
+        lastCheckTime: Date.now(),
+        rustResist: definition.defaultRustResist ?? 0,
       },
       isUnlocked: true,
     });
@@ -80,6 +106,17 @@ export class Skill {
         lastPracticed: 0,
         isDecaying: false,
       },
+      theory: {
+        theoryLevel: 0,
+        theoryExperience: 0,
+        lastStudied: 0,
+      },
+      rust: {
+        isRusted: false,
+        rustLevel: 0,
+        lastCheckTime: Date.now(),
+        rustResist: definition.defaultRustResist ?? 0,
+      },
       isUnlocked: false,
     });
   }
@@ -97,11 +134,38 @@ export class Skill {
         lastPracticed: Date.now(),
         isDecaying: false,
       },
+      theory: {
+        theoryLevel: 0,
+        theoryExperience: 0,
+        lastStudied: 0,
+      },
+      rust: {
+        isRusted: false,
+        rustLevel: 0,
+        lastCheckTime: Date.now(),
+        rustResist: definition.defaultRustResist ?? 0,
+      },
       isUnlocked: true,
     });
   }
 
   // ========== 等级和经验 ==========
+
+  /**
+   * 获取实践等级（通过实际使用获得的等级）
+   * 这是 CDDA 中的 level() 函数对应的实现
+   */
+  level(): SkillLevel {
+    return this.level;
+  }
+
+  /**
+   * 获取理论等级（通过学习获得的等级）
+   * 这是 CDDA 中的 theory() 函数对应的实现
+   */
+  theory(): SkillLevel {
+    return this.theory.theoryLevel;
+  }
 
   /**
    * 获取升级所需经验
@@ -119,15 +183,16 @@ export class Skill {
   }
 
   /**
-   * 练习技能（获得经验）
+   * 练习技能（获得实践经验）
    */
   practiceSkill(baseExperience: SkillExperience, currentTime: number = Date.now()): Skill {
     if (!this.isUnlocked) {
       return this;
     }
 
-    // 应用经验倍率
-    const multiplier = this.definition.getExperienceMultiplier(this.level);
+    // 应用经验倍率和生锈影响
+    const effectiveLevel = Math.max(0, this.level - this.rust.rustLevel);
+    const multiplier = this.definition.getExperienceMultiplier(effectiveLevel);
     const experienceGained = Math.floor(baseExperience * multiplier);
 
     if (experienceGained <= 0) {
@@ -141,11 +206,156 @@ export class Skill {
       isDecaying: false,
     };
 
+    // 练习可以减少一些生锈
+    const rustReduction = Math.min(this.rust.rustLevel, Math.ceil(experienceGained / 100));
+    const newRust: SkillRustData = {
+      ...this.rust,
+      rustLevel: Math.max(0, this.rust.rustLevel - rustReduction),
+      isRusted: Math.max(0, this.rust.rustLevel - rustReduction) > 0,
+      lastCheckTime: currentTime,
+    };
+
     return new Skill({
       definition: this.definition,
       level: this.level,
       experience: newExperience,
       practice: newPractice,
+      theory: this.theory,
+      rust: newRust,
+      isUnlocked: this.isUnlocked,
+    });
+  }
+
+  /**
+   * 学习理论（从书籍等获得理论经验）
+   */
+  studyTheory(baseExperience: SkillExperience, currentTime: number = Date.now()): Skill {
+    if (!this.isUnlocked) {
+      return this;
+    }
+
+    // 理论经验倍率（通常比练习慢）
+    const multiplier = 0.5;
+    const experienceGained = Math.floor(baseExperience * multiplier);
+
+    if (experienceGained <= 0) {
+      return this;
+    }
+
+    const newTheoryExperience = this.theory.theoryExperience + experienceGained;
+
+    // 检查理论是否可以升级
+    let newTheoryLevel = this.theory.theoryLevel;
+    const theoryExpForNextLevel = this.definition.getExperienceForLevel(newTheoryLevel);
+
+    if (newTheoryExperience >= theoryExpForNextLevel && newTheoryLevel < 10) {
+      newTheoryLevel++;
+      // 理论升级会消耗经验
+    }
+
+    const newTheory: SkillTheoryData = {
+      theoryLevel: newTheoryLevel,
+      theoryExperience: newTheoryLevel >= 10
+        ? this.theory.theoryExperience
+        : newTheoryExperience >= theoryExpForNextLevel
+          ? newTheoryExperience - theoryExpForNextLevel
+          : newTheoryExperience,
+      lastStudied: currentTime,
+    };
+
+    return new Skill({
+      definition: this.definition,
+      level: this.level,
+      experience: this.experience,
+      practice: this.practice,
+      theory: newTheory,
+      rust: this.rust,
+      isUnlocked: this.isUnlocked,
+    });
+  }
+
+  /**
+   * 转化理论为实践经验
+   *
+   * 理论会逐渐转化为实际技能等级
+   * 转化速率：每游戏小时约 1-2 点理论经验转化为实践
+   *
+   * CDDA 参考实现：
+   * - 理论等级限制实践等级的上限
+   * - 理论经验随时间慢慢转化为实践
+   * - 转化速率受技能难度影响
+   */
+  convertTheoryToPractice(currentTime: number): Skill {
+    if (this.theory.theoryLevel === 0 || this.theory.theoryExperience === 0) {
+      return this;
+    }
+
+    // 计算自上次学习以来的时间（小时）
+    const hoursPassed = (currentTime - this.theory.lastStudied) / (1000 * 60 * 60);
+
+    if (hoursPassed < 1) {
+      return this; // 不到1小时，不转化
+    }
+
+    // 转化速率基于技能难度
+    // 难度越高，转化越慢
+    const difficultyMultiplier = this.definition.difficultyMultiplier;
+    const baseConversionRate = 0.5; // 每 2 小时转化 1 点经验
+    const actualConversionRate = baseConversionRate / difficultyMultiplier;
+
+    // 计算可转化的理论经验
+    const theoryToConvert = Math.floor(hoursPassed * actualConversionRate);
+    const actualConvert = Math.min(theoryToConvert, this.theory.theoryExperience);
+
+    if (actualConvert <= 0) {
+      return this;
+    }
+
+    // 理论等级限制实践等级上限
+    // 实践等级不能超过理论等级 + 2
+    const maxPracticeLevel = this.theory.theoryLevel + 2;
+    if (this.level >= maxPracticeLevel) {
+      return this; // 已达到理论允许的最大实践等级
+    }
+
+    // 转化理论为实践
+    const newPracticeExp = this.experience + actualConvert;
+    const newTheoryExp = this.theory.theoryExperience - actualConvert;
+
+    // 检查是否可以升级
+    let newLevel = this.level;
+    const expForNextLevel = this.definition.getExperienceForLevel(this.level);
+
+    if (newPracticeExp >= expForNextLevel && this.level < maxPracticeLevel) {
+      newLevel++;
+    }
+
+    // 计算新的理论等级
+    // 理论等级基于理论经验计算
+    let newTheoryLevel = this.theory.theoryLevel;
+    const theoryExpForNextLevel = this.definition.getExperienceForLevel(this.theory.theoryLevel);
+
+    if (newTheoryExp < theoryExpForNextLevel && this.theory.theoryLevel > 0) {
+      // 理论经验不足以维持当前理论等级
+      newTheoryLevel = Math.max(0, this.theory.theoryLevel - 1);
+    }
+
+    return new Skill({
+      definition: this.definition,
+      level: newLevel,
+      experience: newPracticeExp >= expForNextLevel && newLevel > this.level
+        ? newPracticeExp - expForNextLevel
+        : newPracticeExp,
+      practice: {
+        ...this.practice,
+        lastPracticed: currentTime,
+      },
+      theory: {
+        theoryLevel: newTheoryLevel,
+        theoryExperience: newTheoryExp,
+        lastStudied: currentTime,
+      },
+      rust: this.rust,
       isUnlocked: this.isUnlocked,
     });
   }
@@ -186,6 +396,8 @@ export class Skill {
       level: targetLevel,
       experience: remainingExp,
       practice: this.practice,
+      theory: this.theory,
+      rust: this.rust,
       isUnlocked: this.isUnlocked,
     });
   }
@@ -218,6 +430,87 @@ export class Skill {
         remainingExperience: currentSkill.experience,
       },
     };
+  }
+
+  // ========== 生锈系统 ==========
+
+  /**
+   * 处理技能生锈
+   *
+   * @param currentTime 当前时间
+   * @returns 更新后的技能
+   */
+  processRust(currentTime: number = Date.now()): Skill {
+    if (!this.isUnlocked || this.level === 0) {
+      return this;
+    }
+
+    // 计算自上次检查以来的天数
+    const daysPassed = (currentTime - this.rust.lastCheckTime) / (1000 * 60 * 60 * 24);
+
+    if (daysPassed < 1) {
+      return this;
+    }
+
+    // 获取生锈速率（每天减少的经验）
+    const rustRate = this.definition.rustRate ?? 1;
+
+    // 应用生锈抗性
+    const effectiveRustRate = rustRate * (1 - this.rust.rustResist);
+
+    // 计算生锈等级
+    const rustToAdd = Math.floor(daysPassed * effectiveRustRate);
+    const maxRust = this.level; // 生锈等级不能超过当前等级
+
+    const newRustLevel = Math.min(maxRust, this.rust.rustLevel + rustToAdd);
+
+    if (newRustLevel === this.rust.rustLevel) {
+      return this;
+    }
+
+    const newRust: SkillRustData = {
+      isRusted: newRustLevel > 0,
+      rustLevel: newRustLevel,
+      lastCheckTime: currentTime,
+      rustResist: this.rust.rustResist,
+    };
+
+    return new Skill({
+      definition: this.definition,
+      level: this.level,
+      experience: this.experience,
+      practice: this.practice,
+      theory: this.theory,
+      rust: newRust,
+      isUnlocked: this.isUnlocked,
+    });
+  }
+
+  /**
+   * 获取有效等级（扣除生锈影响）
+   */
+  getEffectiveLevel(): SkillLevel {
+    return Math.max(0, this.level - this.rust.rustLevel);
+  }
+
+  /**
+   * 设置生锈抗性
+   */
+  setRustResist(resist: number): Skill {
+    const newRust: SkillRustData = {
+      ...this.rust,
+      rustResist: Math.max(0, Math.min(1, resist)),
+    };
+
+    return new Skill({
+      definition: this.definition,
+      level: this.level,
+      experience: this.experience,
+      practice: this.practice,
+      theory: this.theory,
+      rust: newRust,
+      isUnlocked: this.isUnlocked,
+    });
   }
 
   // ========== 状态查询 ==========
@@ -287,6 +580,8 @@ export class Skill {
       level: this.level,
       experience: this.experience,
       practice: this.practice,
+      theory: this.theory,
+      rust: this.rust,
       isUnlocked: true,
     });
   }
@@ -300,6 +595,8 @@ export class Skill {
       level,
       experience: this.experience,
       practice: this.practice,
+      theory: this.theory,
+      rust: this.rust,
       isUnlocked: this.isUnlocked,
     });
   }
@@ -313,6 +610,8 @@ export class Skill {
       level: this.level,
       experience,
       practice: this.practice,
+      theory: this.theory,
+      rust: this.rust,
       isUnlocked: this.isUnlocked,
     });
   }
@@ -326,6 +625,8 @@ export class Skill {
       level: this.level,
       experience: this.experience + amount,
       practice: this.practice,
+      theory: this.theory,
+      rust: this.rust,
       isUnlocked: this.isUnlocked,
     });
   }
@@ -334,37 +635,12 @@ export class Skill {
 
   /**
    * 处理技能消退（长时间未练习）
+   *
+   * @deprecated 使用 processRust 代替
    */
   processDecay(currentTime: number, decayDays: number = 30): Skill {
-    if (!this.isUnlocked || this.level === 0) {
-      return this;
-    }
-
-    const daysSincePracticed = (currentTime - this.practice.lastPracticed) / (1000 * 60 * 60 * 24);
-
-    if (daysSincePracticed < decayDays) {
-      return this;
-    }
-
-    // 技能开始消退
-    // 每超过一天有 1% 概率降低 1 级
-    const excessDays = Math.floor(daysSincePracticed - decayDays);
-    const decayChance = Math.min(excessDays * 0.01, 0.5);
-
-    if (Math.random() < decayChance && this.level > 0) {
-      return new Skill({
-        definition: this.definition,
-        level: Math.max(0, this.level - 1),
-        experience: this.experience,
-        practice: {
-          ...this.practice,
-          isDecaying: true,
-        },
-        isUnlocked: this.isUnlocked,
-      });
-    }
-
-    return this;
+    // 新的实现直接调用 processRust
+    return this.processRust(currentTime);
   }
 
   // ========== 显示方法 ==========
@@ -403,6 +679,8 @@ export class Skill {
       experience: this.experience,
       isUnlocked: this.isUnlocked,
       practice: this.practice,
+      theory: this.theory,
+      rust: this.rust,
     };
   }
 
@@ -411,6 +689,9 @@ export class Skill {
    */
   static fromJson(json: Record<string, any>, definition: SkillDefinition): Skill {
     const practiceData = json.practice as SkillPracticeData | undefined;
+    const theoryData = json.theory as SkillTheoryData | undefined;
+    const rustData = json.rust as SkillRustData | undefined;
+
     return new Skill({
       definition,
       level: (json.level as SkillLevel) ?? 0,
@@ -419,6 +700,17 @@ export class Skill {
         practiceCount: 0,
         lastPracticed: 0,
         isDecaying: false,
+      },
+      theory: theoryData ?? {
+        theoryLevel: 0,
+        theoryExperience: 0,
+        lastStudied: 0,
+      },
+      rust: rustData ?? {
+        isRusted: false,
+        rustLevel: 0,
+        lastCheckTime: Date.now(),
+        rustResist: definition.defaultRustResist ?? 0,
       },
       isUnlocked: (json.isUnlocked as boolean) ?? true,
     });

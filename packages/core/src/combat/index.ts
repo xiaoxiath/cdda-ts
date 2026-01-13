@@ -121,3 +121,29 @@ export type {
   CombatFeedbackEvent,
 } from './CombatFeedback';
 export { FeedbackType, VisualEffect, SoundEffect } from './CombatFeedback';
+
+// ============================================================================
+// 战斗管理系统
+// ============================================================================
+
+export {
+  CombatManager,
+  createCombatManager,
+  create1v1Combat,
+} from './CombatManager';
+export type {
+  CombatEvent,
+  Combatant,
+  MeleeAttackRequest,
+  RangedAttackRequest,
+  CombatActionResult,
+} from './CombatManager';
+
+export {
+  EffectCombatIntegration,
+  CombatEffects,
+} from './EffectCombatIntegration';
+export type {
+  CombatModifier,
+  CombatEffectContext,
+} from './EffectCombatIntegration';

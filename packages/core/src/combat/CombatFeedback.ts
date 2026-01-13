@@ -460,6 +460,7 @@ export class CombatFeedback {
     intensity: number
   ): CombatFeedbackEvent {
     const messages: FeedbackMessage[] = [];
+    const visuals: VisualFeedback[] = [];
 
     messages.push(CombatFeedback.createMessage(
       FeedbackType.EFFECT_APPLIED,
@@ -469,7 +470,205 @@ export class CombatFeedback {
       { effect: effectName, intensity }
     ));
 
+    // 添加视觉效果
+    visuals.push({
+      effect: VisualEffect.DAMAGE_TEXT,
+      position: { x: 0, y: 0, z: 0 },
+      duration: 1500,
+      parameters: { text: `+${effectName}`, style: 'buff' },
+      color: '#00ff00',
+    });
+
+    return { messages, visuals, sounds: [] };
+  }
+
+  /**
+   * 生成效果过期反馈
+   */
+  static generateEffectExpiredFeedback(
+    targetId: string,
+    effectName: string
+  ): CombatFeedbackEvent {
+    const messages: FeedbackMessage[] = [];
+
+    messages.push(CombatFeedback.createMessage(
+      FeedbackType.EFFECT_EXPIRED,
+      `${targetId} 的 ${effectName} 效果结束了`,
+      3,
+      { target: targetId },
+      { effect: effectName }
+    ));
+
     return { messages, visuals: [], sounds: [] };
+  }
+
+  /**
+   * 生成效果触发反馈
+   */
+  static generateEffectTriggeredFeedback(
+    sourceId: string,
+    effectName: string,
+    triggerType: 'on_attack' | 'on_hit' | 'on_kill' | 'on_dodge' | 'on_block' | 'on_miss',
+    targetId?: string
+  ): CombatFeedbackEvent {
+    const messages: FeedbackMessage[] = [];
+    const visuals: VisualFeedback[] = [];
+
+    const triggerTexts: Record<string, string> = {
+      on_attack: '攻击时触发',
+      on_hit: '命中时触发',
+      on_kill: '击杀时触发',
+      on_dodge: '闪避时触发',
+      on_block: '格挡时触发',
+      on_miss: '未命中时触发',
+    };
+
+    const triggerText = triggerTexts[triggerType] || triggerType;
+    const targetText = targetId ? ` 对 ${targetId}` : '';
+
+    messages.push(CombatFeedback.createMessage(
+      FeedbackType.EFFECT_APPLIED,
+      `${sourceId} 的 ${effectName} ${triggerText}${targetText}！`,
+      5,
+      { source: sourceId, target: targetId },
+      { effect: effectName, trigger: triggerType }
+    ));
+
+    // 视觉效果
+    visuals.push({
+      effect: VisualEffect.DAMAGE_TEXT,
+      position: { x: 0, y: 0, z: 0 },
+      duration: 1000,
+      parameters: { text: `${effectName}!`, style: 'effect' },
+      color: '#ff00ff',
+    });
+
+    return { messages, visuals, sounds: [] };
+  }
+
+  /**
+   * 生成伤害详情反馈
+   */
+  static generateDamageBreakdownFeedback(
+    targetId: string,
+    bodyPart: BodyPartId,
+    rawDamage: number,
+    actualDamage: number,
+    damageType: DamageTypeId,
+    armorAbsorbed: number = 0
+  ): CombatFeedbackEvent {
+    const messages: FeedbackMessage[] = [];
+    const visuals: VisualFeedback[] = [];
+
+    let breakdownText = `${targetId} 的 ${bodyPart} 受到 ${actualDamage} 点${damageType}伤害`;
+    if (armorAbsorbed > 0) {
+      breakdownText += ` (护甲吸收 ${armorAbsorbed})`;
+    }
+    breakdownText += ` (原始伤害 ${rawDamage})`;
+
+    messages.push(CombatFeedback.createMessage(
+      FeedbackType.DAMAGE_TAKEN,
+      breakdownText,
+      5,
+      { target: targetId },
+      {
+        bodyPart,
+        rawDamage,
+        actualDamage,
+        damageType,
+        armorAbsorbed,
+      }
+    ));
+
+    // 显示伤害数字（根据伤害量显示不同颜色）
+    const color = actualDamage > 20 ? '#ff0000' : actualDamage > 10 ? '#ff8800' : '#ffff00';
+    visuals.push({
+      effect: VisualEffect.DAMAGE_NUMBER,
+      position: { x: 0, y: 0, z: 0 },
+      duration: 1200,
+      parameters: {
+        value: actualDamage,
+        subValue: armorAbsorbed > 0 ? `-${armorAbsorbed}` : undefined,
+      },
+      color,
+    });
+
+    return { messages, visuals, sounds: [] };
+  }
+
+  /**
+   * 生成战斗统计反馈
+   */
+  static generateCombatStatsFeedback(
+    combatantId: string,
+    stats: {
+      totalDamage: number;
+      hits: number;
+      misses: number;
+      criticals: number;
+      kills: number;
+    }
+  ): CombatFeedbackEvent {
+    const messages: FeedbackMessage[] = [];
+
+    const accuracy = stats.hits + stats.misses > 0
+      ? Math.round((stats.hits / (stats.hits + stats.misses)) * 100)
+      : 0;
+
+    messages.push(CombatFeedback.createMessage(
+      FeedbackType.COMBAT_MESSAGE,
+      `${combatantId} 战斗统计: 伤害 ${stats.totalDamage}, 命中率 ${accuracy}%, 暴击 ${stats.criticals}, 击杀 ${stats.kills}`,
+      6,
+      { source: combatantId },
+      stats
+    ));
+
+    return { messages, visuals: [], sounds: [] };
+  }
+
+  /**
+   * 生成装填反馈
+   */
+  static generateReloadFeedback(
+    combatantName: string,
+    weaponName: string,
+    amountLoaded: number,
+    magazineSize: number
+  ): CombatFeedbackEvent {
+    const messages: FeedbackMessage[] = [];
+    const visuals: VisualFeedback[] = [];
+
+    const percentage = Math.round((amountLoaded / magazineSize) * 100);
+    messages.push(CombatFeedback.createMessage(
+      FeedbackType.COMBAT_MESSAGE,
+      `${combatantName} 装填 ${weaponName}: +${amountLoaded} (${percentage}%)`,
+      4,
+      { source: combatantName, weapon: weaponName },
+      { amountLoaded, magazineSize, percentage }
+    ));
+
+    // 视觉效果 - 显示装填进度
+    visuals.push({
+      effect: VisualEffect.DAMAGE_TEXT,
+      position: { x: 0, y: 0, z: 0 },
+      duration: 800,
+      parameters: {
+        text: `+${amountLoaded}🔫`,
+        style: 'reload',
+      },
+      color: '#00ff00',
+    });
+
+    // 声音效果
+    const sounds: SoundFeedback[] = [
+      {
+        type: 'reload',
+        volume: 0.5,
+        position: { x: 0, y: 0, z: 0 },
+      },
+    ];
+
+    return { messages, visuals, sounds };
   }
 
   // ============ 辅助方法 ============

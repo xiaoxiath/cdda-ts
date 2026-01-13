@@ -28,6 +28,22 @@ import {
   updateSpoilageEnvironment,
   SpoilState,
 } from './spoilage';
+import {
+  EnchantmentManager,
+  type ItemVariant,
+} from './enchantments';
+import {
+  WetnessData,
+  createWetnessData,
+  updateWetness,
+  addWetness,
+  calculateWetnessEffect,
+  isWet,
+  isSoaked,
+  getWetnessDescription,
+  getMaterialDryFactor,
+  Wetness,
+} from './wetness';
 
 // ============ Item 属性接口 ============
 
@@ -58,7 +74,10 @@ export interface ItemProps {
   frozen?: number;           // 冻结程度
 
   // 腐烂系统
-  spoilage?: SpoilageData;    // 腐烂数据
+  spoilage?: SpoilageData;    // 腐烽数据
+
+  // 潮湿系统
+  wetness?: WetnessData;      // 潮湿数据
 
   // 其他
   owned?: boolean;           // 是否拥有
@@ -70,6 +89,10 @@ export interface ItemProps {
     name: string;
     transformTime?: number;
   };
+
+  // 附魔和变体
+  enchantmentManager?: EnchantmentManager;  // 附魔管理器
+  variant?: ItemVariant;                    // 物品变体
 }
 
 // ============ Item 类 ============
@@ -96,6 +119,7 @@ export class Item {
   readonly burnt?: number;
   readonly frozen?: number;
   readonly spoilage?: SpoilageData;
+  readonly wetness?: WetnessData;
   readonly owned?: boolean;
   readonly missionOwner?: boolean;
   readonly snip?: string;
@@ -104,6 +128,8 @@ export class Item {
     name: string;
     transformTime?: number;
   };
+  readonly enchantmentManager?: EnchantmentManager;
+  readonly variant?: ItemVariant;
 
   constructor(props: ItemProps) {
     const defaults: ItemProps = {
@@ -139,6 +165,7 @@ export class Item {
     Object.defineProperty(this, 'active', { get: () => this._props.active, enumerable: true });
     Object.defineProperty(this, 'temperature', { get: () => this._props.temperature, enumerable: true });
     Object.defineProperty(this, 'spoilage', { get: () => this._props.spoilage, enumerable: true });
+    Object.defineProperty(this, 'wetness', { get: () => this._props.wetness, enumerable: true });
 
     // Optional properties
     if (this._props.tag !== undefined) {
@@ -170,6 +197,12 @@ export class Item {
     }
     if (this._props.corpse !== undefined) {
       Object.defineProperty(this, 'corpse', { get: () => this._props.corpse, enumerable: true });
+    }
+    if (this._props.enchantmentManager !== undefined) {
+      Object.defineProperty(this, 'enchantmentManager', { get: () => this._props.enchantmentManager, enumerable: true });
+    }
+    if (this._props.variant !== undefined) {
+      Object.defineProperty(this, 'variant', { get: () => this._props.variant, enumerable: true });
     }
 
     Object.freeze(this);
@@ -535,6 +568,123 @@ export class Item {
     }
   }
 
+  // ============ 潮湿系统方法 ============
+
+  /**
+   * 检查物品是否有潮湿数据
+   */
+  hasWetness(): boolean {
+    return this.wetness !== undefined;
+  }
+
+  /**
+   * 检查物品是否会受潮湿影响
+   */
+  canGetWet(): boolean {
+    return this.isArmor() || this.isComestible() || this.type.category === 'CLOTHING';
+  }
+
+  /**
+   * 获取当前潮湿度
+   */
+  getWetnessLevel(): number {
+    return this.wetness?.current || 0;
+  }
+
+  /**
+   * 检查是否潮湿
+   */
+  isWet(): boolean {
+    return this.wetness !== undefined && isWet(this.wetness);
+  }
+
+  /**
+   * 检查是否湿透
+   */
+  isSoaked(): boolean {
+    return this.wetness !== undefined && isSoaked(this.wetness);
+  }
+
+  /**
+   * 获取潮湿状态描述
+   */
+  getWetnessDescription(): string {
+    if (!this.wetness) {
+      return '';
+    }
+    return getWetnessDescription(this.wetness);
+  }
+
+  /**
+   * 更新潮湿度（干燥）
+   */
+  updateWetness(currentTime: TimePoint = Date.now() as TimePoint): Item {
+    if (!this.wetness) {
+      return this;
+    }
+    const updatedWetness = updateWetness(this.wetness, currentTime);
+    return this.set('wetness', updatedWetness);
+  }
+
+  /**
+   * 增加潮湿度（淋雨等）
+   */
+  addWetness(amount: number, currentTime: TimePoint = Date.now() as TimePoint): Item {
+    let wetness = this.wetness;
+
+    // 如果没有潮湿数据，创建一个
+    if (!wetness) {
+      const materialId = this.type.material?.[0];
+      wetness = Wetness.create(0, materialId);
+    }
+
+    const updatedWetness = addWetness(wetness, amount, currentTime);
+    return this.set('wetness', updatedWetness);
+  }
+
+  /**
+   * 设置潮湿度
+   */
+  setWetness(newWetness: number, currentTime: TimePoint = Date.now() as TimePoint): Item {
+    let wetness = this.wetness;
+
+    // 如果没有潮湿数据，创建一个
+    if (!wetness) {
+      const materialId = this.type.material?.[0];
+      wetness = Wetness.create(0, materialId);
+    }
+
+    const updatedWetness = {
+      ...wetness,
+      current: Math.max(0, Math.min(100, newWetness)),
+      lastUpdate: currentTime,
+    };
+    return this.set('wetness', updatedWetness);
+  }
+
+  /**
+   * 计算潮湿对保暖值的影响
+   */
+  getWarmthModifier(): number {
+    if (!this.wetness) {
+      return 0;
+    }
+    const effect = calculateWetnessEffect(this.wetness.current);
+    return effect.warmthModifier;
+  }
+
+  /**
+   * 计算潮湿对重量的影响
+   */
+  getWetWeight(): number {
+    if (!this.wetness || this.wetness.current === 0) {
+      return this.getWeight();
+    }
+    const baseWeight = this.getWeight();
+    const effect = calculateWetnessEffect(this.wetness.current);
+    return baseWeight * (1 + effect.weightModifier);
+  }
+
   // ============ 物品堆叠方法 ============
 
   /**
@@ -614,6 +764,16 @@ export class Item {
       return false;
     }
 
+    // 潮湿状态必须相同
+    if (this.wetness || other.wetness) {
+      if (!this.wetness || !other.wetness) {
+        return false;
+      }
+      if (this.wetness.current !== other.wetness.current) {
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -683,6 +843,104 @@ export class Item {
     const validCount = Math.max(1, Math.min(count, maxSize));
 
     return this.set('charges', validCount);
+  }
+
+  // ============ 附魔和变体方法 ============
+
+  /**
+   * 检查物品是否有附魔
+   */
+  hasEnchantments(): boolean {
+    return this.enchantmentManager !== undefined &&
+           this.enchantmentManager.getEnchantments().size > 0;
+  }
+
+  /**
+   * 获取附魔管理器
+   */
+  getEnchantmentManager(): EnchantmentManager {
+    return this.enchantmentManager || EnchantmentManager.create();
+  }
+
+  /**
+   * 应用附魔到物品
+   */
+  addEnchantment(enchantment: any): Item {
+    const manager = this.getEnchantmentManager().addEnchantment(enchantment);
+    return this.set('enchantmentManager', manager);
+  }
+
+  /**
+   * 检查物品是否有变体
+   */
+  hasVariant(): boolean {
+    return this.variant !== undefined;
+  }
+
+  /**
+   * 获取变体名称
+   */
+  getVariantName(): string | undefined {
+    return this.variant?.name;
+  }
+
+  /**
+   * 获取包含变体的显示名称
+   */
+  getDisplayNameWithVariant(currentTime: TimePoint = Date.now() as TimePoint): string {
+    let name = this.getDisplayName(currentTime);
+
+    if (this.variant) {
+      const v = this.variant;
+      if (v.overrides.namePrefix) {
+        name = `${v.overrides.namePrefix} ${name}`;
+      }
+      if (v.overrides.nameSuffix) {
+        name = `${name} ${v.overrides.nameSuffix}`;
+      }
+    }
+
+    return name;
+  }
+
+  /**
+   * 检查物品是否有特定抗性
+   */
+  hasResistance(damageType: string): boolean {
+    if (!this.hasEnchantments()) {
+      return false;
+    }
+    return this.getEnchantmentManager().hasResistance(damageType);
+  }
+
+  /**
+   * 获取附魔伤害加成
+   */
+  getEnchantmentDamageBonus(): number {
+    if (!this.hasEnchantments()) {
+      return 0;
+    }
+    return this.getEnchantmentManager().getDamageBonus();
+  }
+
+  /**
+   * 获取附魔护甲加成
+   */
+  getEnchantmentArmorBonus(): number {
+    if (!this.hasEnchantments()) {
+      return 0;
+    }
+    return this.getEnchantmentManager().getArmorBonus();
+  }
+
+  /**
+   * 获取附魔速度加成
+   */
+  getEnchantmentSpeedBonus(): number {
+    if (!this.hasEnchantments()) {
+      return 0;
+    }
+    return this.getEnchantmentManager().getSpeedBonus();
   }
 
   // ============ 物品使用方法 ============

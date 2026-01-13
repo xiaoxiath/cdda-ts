@@ -726,13 +726,15 @@ export function enchantItem(
   item: Item,
   enchantment: Enchantment
 ): { item: Item; manager: EnchantmentManager } {
-  // 将附魔信息存储到 itemVars 中
-  const enchantedItem = item
-    .setItemVar(`enchantment_${enchantment.id}`, true)
-    .setItemVar(`enchantment_${enchantment.id}_intensity`, enchantment.intensity || 1);
+  // 获取或创建附魔管理器
+  const manager = item.enchantmentManager || EnchantmentManager.create();
+  const newManager = manager.addEnchantment(enchantment);
+
+  // 将附魔管理器设置到物品上
+  const enchantedItem = item.set('enchantmentManager', newManager);
 
   return {
     item: enchantedItem,
-    manager: EnchantmentManager.create().addEnchantment(enchantment),
+    manager: newManager,
   };
 }

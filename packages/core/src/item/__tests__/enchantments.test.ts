@@ -35,12 +35,69 @@ import {
 } from '../enchantments';
 import { createItemTypeId, type ItemFlagType } from '../types';
 
+// Mock Item class for testing enchantments
+class MockItemForEnchantments {
+  constructor(
+    public readonly type: ItemType,
+    public charges: number,
+    public damage: number,
+    public itemVars: Map<string, any> = Map(),
+    public contents: ItemContents = new ItemContents(),
+    public readonly enchantmentManager?: any = undefined
+  ) {}
+
+  get id() { return this.type.id; }
+  get name() { return this.type.name; }
+
+  isDamaged() { return (this.damage ?? 0) > 0; }
+  isBroken() { return (this.damage ?? 0) >= 4000; }
+
+  // Immutable-like set method
+  set(key: string, value: any): any {
+    if (key === 'itemVars') {
+      return new MockItemForEnchantments(
+        this.type,
+        this.charges,
+        this.damage,
+        value,
+        this.contents,
+        this.enchantmentManager
+      );
+    }
+    if (key === 'damage') {
+      return new MockItemForEnchantments(
+        this.type,
+        this.charges,
+        value,
+        this.itemVars,
+        this.contents,
+        this.enchantmentManager
+      );
+    }
+    if (key === 'enchantmentManager') {
+      return new MockItemForEnchantments(
+        this.type,
+        this.charges,
+        this.damage,
+        this.itemVars,
+        this.contents,
+        value
+      );
+    }
+    return this;
+  }
+
+  setItemVar(key: string, value: any) {
+    return this.set('itemVars', this.itemVars.set(key, value));
+  }
+}
+
 // Helper function to create a test item
 function createTestItem(props: {
   id: string;
   name?: string;
   damage?: number;
-}): Item {
+}): any {
   const itemType = new ItemType({
     id: createItemTypeId(props.id),
     name: props.name || props.id,
@@ -55,24 +112,13 @@ function createTestItem(props: {
     color: 'white',
   });
 
-  const item = new Item({
-    type: itemType,
-    charges: 0,
-    damage: props.damage ?? 0,
-    contents: new ItemContents(),
-  });
-
-  // Mock item methods
-  (item as any).isDamaged = () => (item.damage ?? 0) > 0;
-  (item as any).isBroken = () => (item.damage ?? 0) >= 4000;
-
-  // Add setItemVar mock
-  (item as any).setItemVar = function(key: string, value: any) {
-    const newVars = this.itemVars.set(key, value);
-    return this.set('itemVars', newVars);
-  };
-
-  return item as Item;
+  return new MockItemForEnchantments(
+    itemType,
+    0,
+    props.damage ?? 0,
+    Map(),
+    new ItemContents()
+  );
 }
 
 describe('enchantments - EnchantmentType', () => {
@@ -289,7 +335,7 @@ describe('enchantments - EnchantmentManager', () => {
 
       const damageBoostEnchants = manager.getEnchantmentsByType(EnchantmentType.DAMAGE_BOOST);
 
-      expect(damageBoostEnchant.size).toBe(2);
+      expect(damageBoostEnchants.size).toBe(2);
     });
   });
 
@@ -647,8 +693,197 @@ describe('enchantments - enchantItem', () => {
 
     const result = enchantItem(item, fireEnchantment);
 
-    expect(result.item.itemVars.get('enchantment_fire_enchantment')).toBe(true);
-    expect(result.item.itemVars.get('enchantment_fire_enchantment_intensity')).toBe(1);
+    // enchantItem 现在使用 Item.enchantmentManager 属性
+    expect(result.item.enchantmentManager).toBeDefined();
+    expect(result.item.enchantmentManager!.getEnchantments().size).toBe(1);
     expect(result.manager.getEnchantments().size).toBe(1);
+  });
+});
+
+// ============ Item 类集成测试 ============
+
+describe('Item - 附魔系统集成', () => {
+  function createRealItem(props: { id: string; name?: string }): Item {
+    const itemType = new ItemType({
+      id: createItemTypeId(props.id),
+      name: props.name || props.id,
+      description: 'Test item',
+      stackable: false,
+      stackSize: 1,
+      category: 'misc' as any,
+      weight: 1 as any,
+      volume: 1 as any,
+      material: ['steel' as any],
+      symbol: '?',
+      color: 'white',
+    });
+
+    return Item.create(itemType);
+  }
+
+  describe('附魔管理器集成', () => {
+    it('should detect if item has enchantments', () => {
+      const plainItem = createRealItem({ id: 'sword' });
+      expect(plainItem.hasEnchantments()).toBe(false);
+
+      const enchantedItem = plainItem.addEnchantment(fireEnchantment);
+      expect(enchantedItem.hasEnchantments()).toBe(true);
+    });
+
+    it('should get or create enchantment manager', () => {
+      const item = createRealItem({ id: 'staff' });
+      const manager = item.getEnchantmentManager();
+
+      expect(manager).toBeDefined();
+      expect(manager.getEnchantments().size).toBe(0);
+    });
+
+    it('should add enchantment to item', () => {
+      const item = createRealItem({ id: 'wand' });
+      const enchantedItem = item.addEnchantment(frostEnchantment);
+
+      expect(enchantedItem.hasEnchantments()).toBe(true);
+      expect(enchantedItem.getEnchantmentManager().getEnchantments().size).toBe(1);
+    });
+
+    it('should add multiple enchantments', () => {
+      let item = createRealItem({ id: 'artifact' });
+      item = item.addEnchantment(fireEnchantment);
+      item = item.addEnchantment(frostEnchantment);
+      item = item.addEnchantment(speedEnchantment);
+
+      expect(item.getEnchantmentManager().getEnchantments().size).toBe(3);
+    });
+
+    it('should calculate damage bonus', () => {
+      let item = createRealItem({ id: 'sword' });
+      item = item.addEnchantment(fireEnchantment); // +5 damage
+
+      expect(item.getEnchantmentDamageBonus()).toBe(5);
+    });
+
+    it('should calculate armor bonus', () => {
+      const armorEnchantment = createEnchantment(
+        'armor_boost',
+        'Armor Boost',
+        [{ type: EnchantmentType.ARMOR_BOOST, value: 3 }]
+      );
+
+      let item = createRealItem({ id: 'armor' });
+      item = item.addEnchantment(armorEnchantment);
+
+      expect(item.getEnchantmentArmorBonus()).toBe(3);
+    });
+
+    it('should calculate speed bonus', () => {
+      let item = createRealItem({ id: 'boots' });
+      item = item.addEnchantment(speedEnchantment); // +10 speed
+
+      expect(item.getEnchantmentSpeedBonus()).toBe(10);
+    });
+
+    it('should check for resistances', () => {
+      let item = createRealItem({ id: 'ring' });
+      item = item.addEnchantment(fireEnchantment);
+
+      expect(item.hasResistance('fire')).toBe(true);
+      expect(item.hasResistance('cold')).toBe(false);
+    });
+
+    it('should have multiple resistances', () => {
+      let item = createRealItem({ id: 'shield' });
+      item = item.addEnchantment(fireEnchantment);
+      item = item.addEnchantment(frostEnchantment);
+
+      expect(item.hasResistance('fire')).toBe(true);
+      expect(item.hasResistance('cold')).toBe(true);
+      expect(item.hasResistance('electric')).toBe(false);
+    });
+  });
+
+  describe('变体系统集成', () => {
+    it('should detect if item has variant', () => {
+      const plainItem = createRealItem({ id: 'sword' });
+      expect(plainItem.hasVariant()).toBe(false);
+
+      const variantItem = plainItem.set('variant', steelMaterialVariant);
+      expect(variantItem.hasVariant()).toBe(true);
+    });
+
+    it('should get variant name', () => {
+      const item = createRealItem({ id: 'sword' });
+      const variantItem = item.set('variant', steelMaterialVariant);
+
+      expect(variantItem.getVariantName()).toBe('钢铁');
+    });
+
+    it('should get display name with variant suffix', () => {
+      const item = createRealItem({ id: 'sword', name: '剑' });
+      const variantItem = item.set('variant', steelMaterialVariant);
+
+      const displayName = variantItem.getDisplayNameWithVariant(0 as any);
+      expect(displayName).toContain('剑');
+      expect(displayName).toContain('钢铁');
+    });
+
+    it('should get display name with variant prefix', () => {
+      const item = createRealItem({ id: 'sword', name: '剑' });
+      const variantItem = item.set('variant', highQualityVariant);
+
+      const displayName = variantItem.getDisplayNameWithVariant(0 as any);
+      expect(displayName).toContain('优质的');
+      expect(displayName).toContain('剑');
+    });
+
+    it('should get display name with both prefix and suffix', () => {
+      const customVariant: ItemVariant = {
+        id: 'custom' as any,
+        type: VariantType.CUSTOM,
+        name: 'Custom',
+        baseItemId: 'sword' as any,
+        overrides: {
+          namePrefix: '魔法',
+          nameSuffix: '(附魔)',
+        },
+      };
+
+      const item = createRealItem({ id: 'sword', name: '剑' });
+      const variantItem = item.set('variant', customVariant);
+
+      const displayName = variantItem.getDisplayNameWithVariant(0 as any);
+      expect(displayName).toBe('魔法 剑 (附魔)');
+    });
+  });
+
+  describe('附魔与变体组合', () => {
+    it('should have both variant and enchantments', () => {
+      let item = createRealItem({ id: 'sword' });
+      item = item.set('variant', steelMaterialVariant);
+      item = item.addEnchantment(fireEnchantment);
+
+      expect(item.hasVariant()).toBe(true);
+      expect(item.hasEnchantments()).toBe(true);
+      expect(item.getDisplayNameWithVariant(0 as any)).toContain('钢铁');
+      expect(item.getEnchantmentDamageBonus()).toBe(5);
+    });
+
+    it('should apply quality variant with enchantments', () => {
+      const enchantedVariant: ItemVariant = {
+        id: 'fire_sword' as any,
+        type: VariantType.QUALITY,
+        name: '火焰剑',
+        baseItemId: 'sword' as any,
+        overrides: {
+          namePrefix: '火焰',
+        },
+        enchantments: List([fireEnchantment]),
+      };
+
+      const item = createRealItem({ id: 'sword', name: '剑' });
+      const variantItem = item.set('variant', enchantedVariant);
+
+      expect(variantItem.hasVariant()).toBe(true);
+      expect(variantItem.getVariantName()).toBe('火焰剑');
+    });
   });
 });

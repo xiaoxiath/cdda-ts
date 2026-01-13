@@ -153,6 +153,15 @@ function parseAmmoTypeId(id: string): AmmoTypeId {
 // ============ ItemLoader 类 ============
 
 /**
+ * 解析结果 - 包含原始 JSON 和解析后的类型
+ */
+interface ParsedItem {
+  json: JsonObject;
+  type?: ItemType;
+  isAbstract: boolean;
+}
+
+/**
  * ItemLoader - 物品数据加载器
  */
 export class ItemLoader {
@@ -544,6 +553,214 @@ export class ItemLoader {
     };
   }
 
+  // ============ copy-from 继承支持 ============
+
+  /**
+   * 处理 copy-from 继承
+   */
+  private static applyInheritance(
+    json: JsonObject,
+    registry: Map<string, ParsedItem>
+  ): JsonObject {
+    const copyFrom = json['copy-from'] as string | undefined;
+    if (!copyFrom) {
+      return json;
+    }
+
+    const parent = registry.get(copyFrom);
+    if (!parent) {
+      console.warn(`copy-from target not found: ${copyFrom}`);
+      return json;
+    }
+
+    // 递归处理父类的继承
+    const parentJson = parent.isAbstract
+      ? this.applyInheritance(parent.json, registry)
+      : parent.json;
+
+    // 合并属性
+    const merged: JsonObject = { ...parentJson };
+
+    // 处理 replace_flags
+    const replaceFlags = json['replace_flags'] as boolean | undefined;
+
+    // 合并各个属性
+    for (const [key, value] of Object.entries(json)) {
+      // 跳过特殊的控制字段
+      if (key === 'copy-from' || key === 'abstract' || key === 'replace_flags') {
+        continue;
+      }
+
+      // 特殊处理 flags
+      if (key === 'flags') {
+        if (replaceFlags) {
+          // 替换模式：完全替换
+          merged[key] = value;
+        } else {
+          // 扩展模式：合并 flags
+          const parentFlags = (parentJson[key] as string[]) || [];
+          const childFlags = value as string[];
+          merged[key] = [...new Set([...parentFlags, ...childFlags])];
+        }
+      }
+      // 数组属性：子类覆盖
+      else if (Array.isArray(value)) {
+        merged[key] = value;
+      }
+      // 对象属性：深度合并
+      else if (typeof value === 'object' && value !== null) {
+        const parentValue = parentJson[key];
+        if (typeof parentValue === 'object' && parentValue !== null) {
+          merged[key] = { ...parentValue, ...value };
+        } else {
+          merged[key] = value;
+        }
+      }
+      // 其他属性：子类覆盖
+      else {
+        merged[key] = value;
+      }
+    }
+
+    return merged;
+  }
+
+  /**
+   * 解析物品并构建继承关系
+   */
+  private static parseWithInheritance(jsonArray: JsonObject[]): ItemType[] {
+    const types: ItemType[] = [];
+    // 使用原生 JS Map (不是 Immutable.Map)
+    // 存储原始 JSON 和 merged JSON
+    const originalRegistry = new globalThis.Map<string, JsonObject>();
+    const mergedRegistry = new globalThis.Map<string, JsonObject>();
+    const abstracts = new globalThis.Set<string>();
+
+    // 第一遍：初始化 registry 并标记 abstract 物品
+    for (const json of jsonArray) {
+      const id = json['id'] as string;
+      if (!id) continue;
+
+      const isAbstract = json['abstract'] as boolean | undefined;
+      if (isAbstract === true) {
+        abstracts.add(id);
+      }
+
+      // 存储原始 JSON
+      originalRegistry.set(id, json);
+      // 初始时 merged JSON 与原始相同
+      mergedRegistry.set(id, json);
+    }
+
+    // 第二遍：迭代处理继承直到稳定（处理多级继承）
+    let maxIterations = jsonArray.length + 1;
+    let iteration = 0;
+
+    while (iteration < maxIterations) {
+      iteration++;
+      let changed = false;
+
+      for (const json of jsonArray) {
+        const id = json['id'] as string;
+        if (!id) continue;
+
+        const originalJson = originalRegistry.get(id)!;
+        const copyFrom = originalJson['copy-from'] as string | undefined;
+        if (!copyFrom) continue;
+
+        const parentJson = mergedRegistry.get(copyFrom);
+        if (!parentJson) continue;
+
+        // 获取当前合并后的版本
+        const currentMerged = mergedRegistry.get(id)!;
+
+        // 使用原始 child JSON 进行合并（保留 replace_flags 等属性）
+        const newMerged = this.mergeJson(parentJson, originalJson);
+
+        // 检查是否有变化
+        if (JSON.stringify(currentMerged) !== JSON.stringify(newMerged)) {
+          mergedRegistry.set(id, newMerged);
+          changed = true;
+        }
+      }
+
+      // 如果没有变化，提前退出
+      if (!changed) break;
+    }
+
+    // 第三遍：创建类型
+    for (const json of jsonArray) {
+      const id = json['id'] as string;
+      if (!id) continue;
+
+      // 跳过 abstract 物品
+      if (abstracts.has(id)) {
+        continue;
+      }
+
+      // 获取合并后的 JSON
+      const mergedJson = mergedRegistry.get(id) || json;
+
+      // 解析类型
+      const type = ItemLoader.parseItemType(mergedJson);
+      if (type) {
+        types.push(type);
+      }
+    }
+
+    return types;
+  }
+
+  /**
+   * 合并两个 JSON 对象（用于 copy-from 继承）
+   */
+  private static mergeJson(parent: JsonObject, child: JsonObject): JsonObject {
+    const merged: JsonObject = { ...parent };
+
+    // 处理 replace_flags
+    const replaceFlags = child['replace_flags'] as boolean | undefined;
+
+    // 合并各个属性
+    for (const [key, value] of Object.entries(child)) {
+      // 跳过特殊的控制字段
+      if (key === 'copy-from' || key === 'abstract' || key === 'replace_flags') {
+        continue;
+      }
+
+      // 特殊处理 flags
+      if (key === 'flags') {
+        if (replaceFlags) {
+          // 替换模式：完全替换
+          merged[key] = value;
+        } else {
+          // 扩展模式：合并 flags
+          const parentFlags = (parent[key] as string[]) || [];
+          const childFlags = value as string[];
+          merged[key] = [...new Set([...parentFlags, ...childFlags])];
+        }
+      }
+      // 数组属性：子类覆盖
+      else if (Array.isArray(value)) {
+        merged[key] = value;
+      }
+      // 对象属性：深度合并
+      else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const parentValue = parent[key];
+        if (typeof parentValue === 'object' && parentValue !== null && !Array.isArray(parentValue)) {
+          merged[key] = { ...parentValue, ...value };
+        } else {
+          merged[key] = value;
+        }
+      }
+      // 其他属性：子类覆盖（但只有当值不为 undefined 时）
+      else if (value !== undefined) {
+        merged[key] = value;
+      }
+    }
+
+    return merged;
+  }
+
   // ============ 文件加载 ============
 
   /**
@@ -556,19 +773,11 @@ export class ItemLoader {
   }
 
   /**
-   * 从 JSON 数组加载物品类型
+   * 从 JSON 数组加载物品类型（支持 copy-from 继承）
    */
   static fromJsonArray(jsonArray: JsonObject[]): ItemFactory {
     const factory = ItemFactory.create();
-    const types: ItemType[] = [];
-
-    for (const json of jsonArray) {
-      const type = ItemLoader.parseItemType(json);
-      if (type) {
-        types.push(type);
-      }
-    }
-
+    const types = ItemLoader.parseWithInheritance(jsonArray);
     return factory.addTypes(types);
   }
 
@@ -591,7 +800,6 @@ export class ItemLoader {
           for (const json of jsonArray) {
             const type = ItemLoader.parseItemType(json);
             if (type) {
-              // TODO: 处理 copy-from 和 abstract
               factory.addType(type);
             }
           }

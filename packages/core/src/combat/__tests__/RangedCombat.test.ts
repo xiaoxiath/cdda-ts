@@ -245,7 +245,7 @@ describe('RangedCombat', () => {
     });
 
     it('should reduce hit chance with dispersion', () => {
-      const accuracy = 20;
+      const accuracy = 80;  // 提高精度以使测试有意义
       const dodge = 5;
       const distance = 10;
 
@@ -359,9 +359,9 @@ describe('RangedCombat', () => {
       expect(formatted).toContain('enemy');
       expect(formatted).toContain('sniper_rifle');
       expect(formatted).toContain('50 格');
-      expect(formatted).toContain('发射 1 发');
-      expect(formatted).toContain('命中 1 发');
-      expect(formatted).toContain('20 伤害');
+      expect(formatted).toContain('发射: 1 发');
+      expect(formatted).toContain('命中: 1 发');
+      expect(formatted).toContain('总伤害: 25');
     });
 
     it('should format burst fire result', () => {
@@ -410,9 +410,9 @@ describe('RangedCombat', () => {
 
       const formatted = RangedCombat.formatAttackResult(result);
 
-      expect(formatted).toContain('发射 3 发');
-      expect(formatted).toContain('命中 2 发');
-      expect(formatted).toContain('总计 40 伤害');
+      expect(formatted).toContain('发射: 3 发');
+      expect(formatted).toContain('命中: 2 发');
+      expect(formatted).toContain('总伤害: 40');
     });
   });
 

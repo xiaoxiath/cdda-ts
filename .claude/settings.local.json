@@ -42,7 +42,9 @@
       "Bash(curl:*)",
       "WebSearch",
       "Bash(tree:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(timeout 60 npm test:*)",
+      "Bash(perl:*)"
     ]
   }
 }

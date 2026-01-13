@@ -3,9 +3,11 @@ import GameCanvas from './components/GameCanvas'
 import GameLog from './components/GameLog'
 import GameStats from './components/GameStats'
 import Sidebar from './components/Sidebar'
+import StartScreen from './components/StartScreen'
 import { useGame } from './hooks/useGame'
 import { configStorage } from './services/configStorage'
 import { getUIConfigLoader } from './ui/UIConfigLoader'
+import { logger, LogLevel } from './utils/logger'
 import './App.css'
 import './ui/widgets/WidgetRenderer.css'
 
@@ -36,7 +38,8 @@ const DEFAULT_CONFIG = {
 }
 
 function App() {
-  const { gameState, isReady, error, handleInput } = useGame()
+  const { gameState, isReady, error, handleInput, initializeGame } = useGame()
+  const [gameStarted, setGameStarted] = useState(false)
   const [displayMode, setDisplayMode] = useState<'ascii' | 'tile'>(DEFAULT_CONFIG.displayMode)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(DEFAULT_CONFIG.sidebarCollapsed)
   const [resolutionIndex, setResolutionIndex] = useState(DEFAULT_CONFIG.resolutionIndex)
@@ -47,6 +50,27 @@ function App() {
 
   const currentResolution = RESOLUTIONS[resolutionIndex]
   const isFullscreen = currentResolution.fullscreen === true
+
+  // 检测 URL 参数（debug 功能）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const debugParam = params.get('debug')
+    const hasQueryParam = params.has('query')
+
+    if (debugParam === '1' || hasQueryParam) {
+      console.log('[App] Debug mode detected, skipping start screen')
+
+      // 设置日志级别为 DEBUG
+      logger.setLevel(LogLevel.DEBUG)
+      console.log('[App] Debug logging enabled')
+
+      setGameStarted(true)
+      // 稍后初始化游戏，让状态先设置好
+      setTimeout(() => {
+        initializeGame()
+      }, 100)
+    }
+  }, [initializeGame])
 
   // 加载保存的配置
   useEffect(() => {
@@ -147,6 +171,12 @@ function App() {
     setSidebarCollapsed(prev => !prev)
   }, [])
 
+  // 处理游戏开始
+  const handleStartGame = useCallback(() => {
+    setGameStarted(true)
+    initializeGame()
+  }, [initializeGame])
+
   if (error) {
     return (
       <div className="error-screen">
@@ -157,6 +187,11 @@ function App() {
         </div>
       </div>
     )
+  }
+
+  // 显示启动菜单
+  if (!gameStarted) {
+    return <StartScreen onStart={handleStartGame} />
   }
 
   if (!isReady || !configLoaded || !uiConfigLoaded) {

@@ -6,6 +6,7 @@ import {
 } from '@cataclym-web/core/mapgen'
 import { TerrainLoader } from '@cataclym-web/core'
 import { FurnitureLoader } from '@cataclym-web/core'
+import { debug, info, warn, error, success, LogCategory } from '../utils/logger'
 
 /**
  * MapGen 数据加载器
@@ -28,7 +29,7 @@ export class MapGenDataLoader {
    * 加载 mapgen 数据文件
    */
   async loadFromUrl(url: string): Promise<void> {
-    console.log(`[MapGenDataLoader] Loading from: ${url}`)
+    debug(LogCategory.DATA, `[MapGenDataLoader] Loading from: ${url}`)
 
     const response = await fetch(url)
     if (!response.ok) {
@@ -51,12 +52,12 @@ export class MapGenDataLoader {
     try {
       const response = await fetch(`${dataDir}/index.json`)
       if (!response.ok) {
-        console.warn(`[MapGenDataLoader] 无法获取 ${dirName} 索引: ${response.statusText}`)
+        warn(LogCategory.DATA, `[MapGenDataLoader] 无法获取 ${dirName} 索引: ${response.statusText}`)
         return 0
       }
 
       const files = await response.json() as string[]
-      console.log(`[MapGenDataLoader] 找到 ${files.length} 个 ${dirName} 文件`)
+      debug(LogCategory.DATA, `[MapGenDataLoader] 找到 ${files.length} 个 ${dirName} 文件`)
 
       let loadedCount = 0
       for (const file of files) {
@@ -64,13 +65,13 @@ export class MapGenDataLoader {
           await this.loadFromUrl(`${dataDir}/${file}`)
           loadedCount++
         } catch (err) {
-          console.warn(`[MapGenDataLoader] 加载 ${dirName} 文件失败: ${file}`, err)
+          warn(LogCategory.DATA, `[MapGenDataLoader] 加载 ${dirName} 文件失败: ${file}`, err)
         }
       }
 
       return loadedCount
     } catch (error) {
-      console.warn(`[MapGenDataLoader] 加载 ${dirName} 数据失败:`, error)
+      warn(LogCategory.DATA, `[MapGenDataLoader] 加载 ${dirName} 数据失败:`, error)
       return 0
     }
   }
@@ -90,20 +91,20 @@ export class MapGenDataLoader {
       // 首先加载调色板（因为 mapgen 可能会引用它们）
       const paletteDir = '/data/json/mapgen_palettes'
       const paletteCount = await this.loadDataFromDirectory(paletteDir, 'palette')
-      console.log(`[MapGenDataLoader] 调色板加载完成: ${paletteCount} 个`)
+      debug(LogCategory.DATA, `[MapGenDataLoader] 调色板加载完成: ${paletteCount} 个`)
 
       // 然后加载 mapgen 文件
       const mapgenDir = '/data/json/mapgen'
       const mapgenCount = await this.loadDataFromDirectory(mapgenDir, 'mapgen')
-      console.log(`[MapGenDataLoader] mapgen 加载完成: ${mapgenCount} 个`)
+      debug(LogCategory.DATA, `[MapGenDataLoader] mapgen 加载完成: ${mapgenCount} 个`)
 
       this.loaded = true
-      console.log(`[MapGenDataLoader] 数据加载完成!`)
+      debug(LogCategory.DATA, `[MapGenDataLoader] 数据加载完成!`)
       console.log(`  - 成功加载: ${paletteCount + mapgenCount} 个文件`)
       console.log(`  - mapgens: ${this.loader.size()}`)
       console.log(`  - palettes: ${this.loader.paletteCount()}`)
     } catch (error) {
-      console.error('[MapGenDataLoader] 加载数据失败:', error)
+      error(LogCategory.DATA, '[MapGenDataLoader] 加载数据失败:', error)
       throw error
     }
   }
@@ -114,7 +115,7 @@ export class MapGenDataLoader {
   getGenerator(id: string): CataclysmMapGenGenerator | null {
     const mapgenData = this.loader.get(id)
     if (!mapgenData) {
-      console.warn(`[MapGenDataLoader] mapgen not found: ${id}`)
+      warn(LogCategory.DATA, `[MapGenDataLoader] mapgen not found: ${id}`)
       return null
     }
 

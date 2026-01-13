@@ -9,6 +9,7 @@ import type { GameState } from '../types'
 import type { WidgetValues, SidebarConfig } from '../ui/types'
 import { WidgetRenderer } from '../ui/widgets/WidgetRenderer'
 import { getUIConfigLoader } from '../ui/UIConfigLoader'
+import { debug, warn, LogCategory } from '../utils/logger'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -32,7 +33,7 @@ export default function Sidebar({ gameState, sidebarId = 'custom_sidebar', colla
       if (!loader.isLoaded()) {
         // 浏览器环境由于 CORS 限制无法直接访问本地 JSON 文件
         // 使用内置默认侧边栏（这是预期行为）
-        console.log('[Sidebar] Using built-in default sidebar (browser environment)')
+        debug(LogCategory.UI, '使用内置默认侧边栏 (浏览器环境)')
         setLoaded(true)
         return
       }
@@ -41,7 +42,7 @@ export default function Sidebar({ gameState, sidebarId = 'custom_sidebar', colla
       if (config) {
         setSidebarConfig(config)
       } else {
-        console.warn(`[Sidebar] Sidebar config not found: ${sidebarId}`)
+        warn(LogCategory.UI, `侧边栏配置未找到: ${sidebarId}`)
       }
 
       setLoaded(true)

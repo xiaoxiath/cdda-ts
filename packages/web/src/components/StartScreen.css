@@ -1,0 +1,447 @@
+/* ========================================
+   StartScreen - CDDA 风格启动菜单
+   ======================================== */
+
+.start-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  color: var(--text-primary);
+  font-family: 'Courier New', 'Menlo', 'Monaco', monospace;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Debug 模式指示器 */
+.debug-indicator {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 8px 16px;
+  background: rgba(255, 152, 0, 0.15);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  border-radius: var(--radius-md);
+  color: #ff9800;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  animation: pulse 2s ease-in-out infinite;
+  z-index: 1000;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 20px rgba(255, 152, 0, 0.5);
+  }
+}
+
+/* 背景装饰 - 辐射符号 */
+.start-screen::before {
+  content: '☢';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 600px;
+  opacity: 0.03;
+  pointer-events: none;
+  font-family: Arial, sans-serif;
+}
+
+/* ========================================
+   ASCII Title
+   ======================================== */
+
+.start-title {
+  text-align: center;
+  margin-bottom: 40px;
+  animation: fadeInDown 1s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ascii-title {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  line-height: 1.1;
+  color: #7cb342;
+  text-shadow: 0 0 10px rgba(124, 179, 66, 0.5);
+  margin: 0;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(124, 179, 66, 0.2);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.title-subtitle {
+  font-size: 18px;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.title-version {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+}
+
+/* ========================================
+   Main Menu
+   ======================================== */
+
+.main-menu {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 800px;
+  margin-bottom: 40px;
+  animation: fadeIn 1s ease-out 0.3s both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 120px;
+  justify-content: space-between;
+}
+
+.menu-item:hover {
+  background: rgba(124, 179, 66, 0.1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(124, 179, 66, 0.2);
+}
+
+.menu-item.selected {
+  background: rgba(124, 179, 66, 0.15);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  box-shadow: 0 0 20px rgba(124, 179, 66, 0.3);
+}
+
+.menu-label {
+  flex: 1;
+  text-align: left;
+}
+
+.menu-hotkey {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+}
+
+/* ========================================
+   Submenu Panel
+   ======================================== */
+
+.submenu-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-secondary);
+  border: 2px solid var(--accent-primary);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  min-width: 400px;
+  max-width: 600px;
+  max-height: 70vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: fadeInScale 0.2s ease-out;
+  z-index: 100;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.submenu-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.submenu-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* MOTD 内容 */
+.motd-content {
+  white-space: pre-line;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.motd-content p {
+  margin: 0;
+}
+
+/* 子菜单项 */
+.submenu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.submenu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.submenu-item:hover {
+  background: rgba(124, 179, 66, 0.1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.submenu-item.selected {
+  background: rgba(124, 179, 66, 0.15);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  box-shadow: 0 0 10px rgba(124, 179, 66, 0.2);
+}
+
+.submenu-label {
+  font-size: 13px;
+}
+
+.submenu-hotkey {
+  font-size: 10px;
+  padding: 3px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+}
+
+/* Credits 内容 */
+.credits-content {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.credits-content h3 {
+  font-size: 14px;
+  color: var(--accent-primary);
+  margin: 16px 0 8px 0;
+}
+
+.credits-content p {
+  margin: 4px 0;
+  color: var(--text-tertiary);
+}
+
+.credits-content ul {
+  margin: 8px 0 16px 20px;
+  padding: 0;
+}
+
+.credits-content li {
+  margin: 4px 0;
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   Footer
+   ======================================== */
+
+.start-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 24px;
+  background: linear-gradient(to top, var(--bg-primary), transparent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.tip-of-day {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.tip-label {
+  color: var(--accent-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tip-text {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.footer-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.footer-info kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin: 0 2px;
+}
+
+.debug-shortcut {
+  margin-left: 12px;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.debug-shortcut:hover {
+  opacity: 1;
+}
+
+.debug-shortcut a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent-primary);
+}
+
+.debug-shortcut a:hover {
+  color: var(--accent-hover);
+  border-bottom-style: solid;
+}
+
+/* ========================================
+   响应式设计
+   ======================================== */
+
+@media (max-width: 768px) {
+  .ascii-title {
+    font-size: 6px;
+    padding: 10px;
+  }
+
+  .main-menu {
+    gap: 6px;
+  }
+
+  .menu-item {
+    min-width: 100px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .submenu-panel {
+    min-width: 90vw;
+    padding: 16px;
+  }
+
+  .start-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .footer-info {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ascii-title {
+    font-size: 4px;
+    padding: 8px;
+  }
+
+  .menu-item {
+    min-width: 80px;
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .menu-hotkey {
+    font-size: 9px;
+    padding: 2px 4px;
+  }
+}

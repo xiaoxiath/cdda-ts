@@ -4,9 +4,11 @@
  * 参考 Cataclysm-DDA 的 item.h 和 itype.h
  */
 
-import type { Point } from '../coordinates';
+import type { TimeDuration, TimePoint } from '../field/FieldEntry';
 import type { Tripoint } from '../coordinates';
-import type { TimeDuration, TimePoint } from '../types/common';
+
+// 重新导出腐烂系统类型
+export type { SpoilState, SpoilageData } from './spoilage';
 
 // ============ 物品 ID 类型 ============
 
@@ -217,8 +219,8 @@ export type ItemFlagType = typeof ItemFlag[keyof typeof ItemFlag];
 /**
  * 创建物品标志集合
  */
-export function createItemFlagSet(...flags: ItemFlagType[]): Set<ItemFlagType> {
-  return new Set(flags);
+export function createItemFlagSet(...flags: ItemFlagType[]): globalThis.Set<ItemFlagType> {
+  return new globalThis.Set(flags);
 }
 
 // ============ 物品状态 ============
@@ -241,7 +243,7 @@ export interface ItemLocation {
   type: ItemLocationType;
   position?: Tripoint;
   index?: number;
-  container?: Item;
+  container?: any; // Item - 避免循环引用
 }
 
 // ============ 质量和体积 ============
@@ -274,8 +276,9 @@ export function createVolume(milliliters: number): Volume {
 
 /**
  * 物品运行时变量映射
+ * 使用原生 Map 以支持任意键值对
  */
-export type ItemVars = Map<string, string | number | boolean>;
+export type ItemVars = globalThis.Map<string, string | number | boolean>;
 
 // ============ 辅助类型 ============
 
@@ -300,10 +303,11 @@ export enum VisitResponse {
 
 /**
  * 访问者函数类型
+ * 注意：使用 any 避免循环引用，实际使用时是 Item 类型
  */
 export type VisitorFunction = (
-  item: Item,
-  parent: Item | null
+  item: any,
+  parent: any | null
 ) => VisitResponse;
 
 // ============ JSON 对象类型 ============

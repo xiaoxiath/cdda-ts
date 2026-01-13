@@ -9,6 +9,7 @@ import {
 import type { InputAction } from '../types'
 import { gameDataLoader } from '../services/GameDataLoader'
 import { WorldMapLoader } from '../services/WorldMapLoader'
+import { debug, info, warn, error, success, group, groupEnd, LogCategory } from '../utils/logger'
 
 // 全局游戏状态
 let globalMap: WorldMap | null = null
@@ -24,8 +25,9 @@ let worldMapLoader: WorldMapLoader | null = null
 export function useGame() {
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [isReady, setIsReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [errorState, setErrorState] = useState<string | null>(null)
   const isInitializing = useRef(false)
+  const [shouldInit, setShouldInit] = useState(false)
 
   /**
    * 更新游戏状态到 React
@@ -47,7 +49,7 @@ export function useGame() {
    */
   const handleMove = useCallback(async (dx: number, dy: number, dz: number = 0) => {
     if (!globalPlayer || !globalMap) {
-      console.log('[handleMove] 无法移动: globalPlayer 或 globalMap 为空')
+      debug(LogCategory.GAME, '无法移动: globalPlayer 或 globalMap 为空')
       return
     }
 
@@ -58,12 +60,12 @@ export function useGame() {
       z: globalPlayer.position.z + dz,
     })
 
-    console.log(`[handleMove] 移动: (${oldPos.x},${oldPos.y}) -> (${newPos.x},${newPos.y}), delta: (${dx},${dy})`)
+    debug(LogCategory.GAME, `移动: (${oldPos.x},${oldPos.y}) -> (${newPos.x},${newPos.y}), delta: (${dx},${dy})`)
 
     // 检查新位置是否有瓦片
     const tile = globalMap.getTile(newPos)
     if (!tile) {
-      console.log(`[handleMove] 移动失败: 位置 (${newPos.x},${newPos.y}) 超出边界`)
+      warn(LogCategory.GAME, `移动失败: 位置 (${newPos.x},${newPos.y}) 超出边界`)
       return // 边界检查
     }
 
@@ -71,7 +73,7 @@ export function useGame() {
     const terrainLoader = gameDataLoader.getTerrainLoader()
     const terrain = terrainLoader.get(tile.terrain)
     if (terrain && !terrain.isPassable()) {
-      console.log(`[handleMove] 移动失败: 地形 '${terrain.name}' 不可通行`)
+      warn(LogCategory.GAME, `移动失败: 地形 '${terrain.name}' 不可通行`)
       globalMessages.push(`你无法穿过 ${terrain.name}。`)
       updateGameState()
       return
@@ -88,12 +90,12 @@ export function useGame() {
     globalPlayer = updatedPlayer
     globalTurn++
 
-    console.log(`[handleMove] 移动成功! 新位置: (${newPos.x},${newPos.y}), 回合: ${globalTurn}`)
+    debug(LogCategory.GAME, `移动成功! 新位置: (${newPos.x},${newPos.y}), 回合: ${globalTurn}`)
 
     // 动态加载周围区域
     if (worldMapLoader) {
       await worldMapLoader.loadAround(newPos)
-      console.log(`[handleMove] 缓存大小: ${globalMap.getCacheSize()}`)
+      debug(LogCategory.MAP, `缓存大小: ${globalMap.getCacheSize()}`)
     }
 
     updateGameState()
@@ -111,31 +113,27 @@ export function useGame() {
    * 初始化游戏
    */
   useEffect(() => {
-    if (isInitializing.current) return
+    if (!shouldInit || isInitializing.current) return
     isInitializing.current = true
 
     async function initGame() {
-      try {
-        console.log('========================================')
-        console.log('开始初始化 Cataclysm-DDA Web (无限地图版)...')
-        console.log('========================================')
+      group(LogCategory.GAME, '初始化 Cataclysm-DDA Web')
 
+      try {
         // 1. 加载核心游戏数据
         if (!globalDataLoaded) {
-          console.log('[1/3] 加载核心游戏数据...')
+          info(LogCategory.DATA, '加载核心游戏数据...')
           await gameDataLoader.loadCoreData()
           globalDataLoaded = true
 
           const stats = gameDataLoader.getStats()
-          console.log(`[1/3] 数据加载完成!`)
-          console.log(`      - 地形: ${stats.terrainCount} 个`)
-          console.log(`      - 家具: ${stats.furnitureCount} 个`)
+          success(LogCategory.DATA, `数据加载完成! 地形: ${stats.terrainCount} 个, 家具: ${stats.furnitureCount} 个`)
         } else {
-          console.log('[1/3] 使用已加载的游戏数据')
+          info(LogCategory.DATA, '使用已加载的游戏数据')
         }
 
         // 2. 创建世界地图加载器
-        console.log('[2/3] 创建世界地图加载器...')
+        info(LogCategory.MAP, '创建世界地图加载器...')
         const terrainLoader = gameDataLoader.getTerrainLoader()
         const furnitureLoader = gameDataLoader.getFurnitureLoader()
 
@@ -143,10 +141,10 @@ export function useGame() {
 
         // 加载 mapgen 数据
         await worldMapLoader.loadMapGenData()
-        console.log(`[2/3] 世界地图加载器创建完成!`)
+        success(LogCategory.MAP, '世界地图加载器创建完成!')
 
         // 3. 创建玩家角色并初始化周围区域
-        console.log('[3/3] 创建玩家角色并初始化周围区域...')
+        info(LogCategory.GAME, '创建玩家角色并初始化周围区域...')
 
         // 初始位置（世界中心附近）
         const playerPos = new Tripoint({ x: 0, y: 0, z: 0 })
@@ -176,16 +174,14 @@ export function useGame() {
         updateGameState()
         setIsReady(true)
 
-        console.log('========================================')
-        console.log('游戏初始化完成!')
-        console.log(`初始位置: (${playerPos.x}, ${playerPos.y})`)
-        console.log(`缓存大小: ${globalMap.getCacheSize()} submap`)
-        console.log('========================================')
+        success(LogCategory.GAME, `游戏初始化完成! 初始位置: (${playerPos.x}, ${playerPos.y}), 缓存: ${globalMap.getCacheSize()} submap`)
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : '初始化失败'
-        setError(errorMsg)
-        console.error('游戏初始化失败:', err)
+        setErrorState(errorMsg)
+        error(LogCategory.GAME, '游戏初始化失败:', err)
       }
+
+      groupEnd()
     }
 
     initGame()
@@ -196,18 +192,27 @@ export function useGame() {
       globalPlayer = null
       worldMapLoader = null
     }
-  }, [updateGameState])
+  }, [shouldInit, updateGameState])
+
+  /**
+   * 手动触发游戏初始化
+   */
+  const initializeGame = useCallback(() => {
+    if (!isReady) {
+      setShouldInit(true)
+    }
+  }, [isReady])
 
   /**
    * 处理输入动作
    */
   const handleInput = useCallback((action: InputAction) => {
     if (!isReady) {
-      console.log('[handleInput] 游戏未就绪，忽略输入')
+      debug(LogCategory.INPUT, '游戏未就绪，忽略输入')
       return
     }
 
-    console.log('[handleInput] 收到输入动作:', action)
+    debug(LogCategory.INPUT, '收到输入动作:', action)
 
     switch (action.type) {
       case 'move':
@@ -246,8 +251,9 @@ export function useGame() {
   return {
     gameState,
     isReady,
-    error,
+    error: errorState,
     handleInput,
     getPlayerPosition,
+    initializeGame,
   }
 }

@@ -7,6 +7,7 @@
 import { Creature } from './Creature';
 import { Tripoint } from '../coordinates/Tripoint';
 import { BodyPartId, CreatureSize, CreatureType, CharacterStats, BodyPartData, BodyPartType } from './types';
+import { SurvivalStats } from './SurvivalStats';
 
 /**
  * 玩家角色类
@@ -25,6 +26,11 @@ export class Avatar extends Creature {
   private readonly bodyParts: Map<BodyPartId, BodyPartData>;
 
   /**
+   * 生存统计
+   */
+  public readonly survivalStats: SurvivalStats;
+
+  /**
    * 创建玩家角色
    *
    * @param id - 角色唯一标识符
@@ -41,11 +47,13 @@ export class Avatar extends Creature {
       dex: 8,
       int: 8,
       per: 8,
-    }
+    },
+    survivalStats?: SurvivalStats
   ) {
     super(id, position, name, CreatureSize.MEDIUM);
     this.stats = stats;
     this.bodyParts = Avatar.createDefaultBodyParts();
+    this.survivalStats = survivalStats ?? SurvivalStats.create();
   }
 
   /**
@@ -247,7 +255,70 @@ export class Avatar extends Creature {
    */
   getDescription(): string {
     const status = this.getHealthStatus();
+    const survival = this.survivalStats.getDescription();
     const posStr = `(${this.position.x}, ${this.position.y}, ${this.position.z})`;
-    return `${this.name} - ${status} @ ${posStr}`;
+    const survivalStr = survival !== '状态良好' ? ` - ${survival}` : '';
+    return `${this.name} - ${status}${survivalStr} @ ${posStr}`;
+  }
+
+  // ========== 生存状态方法 ==========
+
+  /**
+   * 更新生存状态
+   */
+  setSurvivalStats(stats: SurvivalStats): Avatar {
+    (this as any).survivalStats = stats;
+    return this;
+  }
+
+  /**
+   * 处理一回合
+   *
+   * 重写父类方法，添加生存状态更新
+   */
+  override processTurn(isMoving: boolean = false, isFighting: boolean = false): void {
+    // 更新生存状态
+    const newSurvivalStats = this.survivalStats.processTurn(isMoving, isFighting);
+    (this as any).survivalStats = newSurvivalStats;
+
+    // 如果处于临界状态，可能会受到伤害
+    if (newSurvivalStats.isCritical()) {
+      // TODO: 根据具体的临界状态施加负面效果
+      // 例如：饥饿造成体力流失，脱水造成感知下降等
+    }
+  }
+
+  /**
+   * 进食
+   */
+  eat(hungerRestored: number, thirstRestored: number = 0): Avatar {
+    const newStats = this.survivalStats
+      .consumeHunger(hungerRestored)
+      .consumeThirst(thirstRestored);
+    return this.setSurvivalStats(newStats);
+  }
+
+  /**
+   * 饮水
+   */
+  drink(amount: number): Avatar {
+    const newStats = this.survivalStats.consumeThirst(amount);
+    return this.setSurvivalStats(newStats);
+  }
+
+  /**
+   * 开始睡眠
+   */
+  startSleeping(): Avatar {
+    const newStats = this.survivalStats.startSleeping();
+    return this.setSurvivalStats(newStats);
+  }
+
+  /**
+   * 结束睡眠
+   */
+  stopSleeping(): Avatar {
+    const newStats = this.survivalStats.stopSleeping();
+    return this.setSurvivalStats(newStats);
   }
 }

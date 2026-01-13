@@ -9,12 +9,15 @@ import { List, Map } from 'immutable';
 import type {
   Mass,
   Volume,
-  ContainCode,
   VisitorFunction,
+} from './types';
+import {
+  ContainCode,
   VisitResponse,
 } from './types';
 import { Item } from './Item';
 import { ItemPocket } from './ItemPocket';
+import { ItemType } from './ItemType';
 
 // ============ ItemContents 属性接口 ============
 
@@ -217,8 +220,13 @@ export class ItemContents {
       return new ItemContents({ pockets: newPockets });
     }
 
-    // 没找到合适的 pocket，返回未修改的实例
-    return this;
+    // 没找到合适的 pocket，创建一个新的通用容器 pocket
+    const newPocket = ItemPocket.createContainer(
+      item.getVolume() * 10, // 容量为物品体积的10倍
+      item.getWeight() * 10   // 重量容量为物品重量的10倍
+    );
+    const newPockets = this.pockets.push(newPocket.addItem(item));
+    return new ItemContents({ pockets: newPockets });
   }
 
   /**
@@ -318,13 +326,23 @@ export class ItemContents {
   /**
    * 从 JSON 创建
    */
-  static fromJson(json: Record<string, any>[], types: Map<string, ItemType>): ItemContents {
+  static fromJson(json: Record<string, any>[], types: import('immutable').Map<string, ItemType>): ItemContents {
     const contents = ItemContents.empty();
+
+    // 将 Immutable.js Map 转换为原生 Map
+    const typesMap = new globalThis.Map<string, ItemType>();
+    types.forEach((type, id) => {
+      typesMap.set(id, type);
+    });
 
     for (const itemJson of json) {
       try {
-        const item = Item.fromJson(itemJson, types);
-        // TODO: 添加到合适的 pocket
+        const typeId = itemJson['id'] as string;
+        const type = typesMap.get(typeId);
+        if (type) {
+          const item = Item.fromJson(itemJson, typesMap);
+          // TODO: 添加到合适的 pocket
+        }
       } catch (error) {
         console.error('Failed to load item:', error);
       }

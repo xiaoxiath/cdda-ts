@@ -11,6 +11,7 @@ export * from './types';
 export { Creature } from './Creature';
 export { Avatar } from './Avatar';
 export { NPC } from './NPC';
+export { SurvivalStats, HungerLevel, ThirstLevel, FatigueLevel } from './SurvivalStats';
 
 // 加载器和管理器
 export { NPCClassLoader, NPCManager } from './NPCClassLoader';

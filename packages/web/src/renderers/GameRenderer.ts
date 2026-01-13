@@ -1,37 +1,70 @@
 import type { GameMap, Tripoint, MapTile } from '@cataclym-web/core'
 import type { DisplayMode, RenderConfig, TileData } from '../types'
 import { gameDataLoader } from '../services/GameDataLoader'
+import { debug, info, group, groupEnd, LogCategory } from '../utils/logger'
 
 /**
- * 默认颜色映射
+ * CDDA 风格的颜色映射
+ * 使用 ncurses 风格的颜色名称
  */
-const DEFAULT_COLORS = {
-  ground: '#4a4a4a',
-  grass: '#2d5a27',
-  wall: '#888888',
-  water: '#4169e1',
-  player: '#4a9eff',
-  unknown: '#1a1a1a',
-  highlight: '#ffff00',
+const CDDA_COLORS = {
+  // 基础颜色
+  black: '#000000',
+  red: '#ff0000',
+  green: '#00ff00',
+  yellow: '#ffff00',
+  blue: '#0000ff',
+  magenta: '#ff00ff',
+  cyan: '#00ffff',
+  white: '#ffffff',
+
+  // 明亮变体
+  bright_red: '#ff5555',
+  bright_green: '#55ff55',
+  bright_yellow: '#ffff55',
+  bright_blue: '#5555ff',
+  bright_magenta: '#ff55ff',
+  bright_cyan: '#55ffff',
+  bright_white: '#ffffff',
+
+  // CDDA 特定颜色
+  c_light_gray: '#808080',
+  c_dark_gray: '#404040',
+  c_red: '#ff0000',
+  c_green: '#00ff00',
+  c_blue: '#0000ff',
+  c_cyan: '#00ffff',
+  c_magenta: '#ff00ff',
+  c_brown: '#aa5500',
+  c_light_blue: '#aaaaaa',
+  c_light_green: '#55ff55',
+  c_light_red: '#ff5555',
+  c_yellow: '#ffff00',
+  c_pink: '#ffaaaa',
+  c_white: '#ffffff',
+  c_dark_green: '#00aa00',
+  c_dark_red: '#aa0000',
+  c_dark_blue: '#0000aa',
+  c_dark_cyan: '#00aaaa',
+  c_dark_magenta: '#aa00aa',
+  c_dark_brown: '#775500',
+  c_dark_yellow: '#aaaa00',
 }
 
 /**
- * 默认字符映射
+ * 绘制参数（对应 CDDA 的 drawsq_params）
  */
-const DEFAULT_CHARS = {
-  unknown: '?',
-  ground: '.',
-  grass: ',',
-  wall: '#',
-  water: '~',
-  player: '@',
-  floor: '.',
-  door: '+',
-  window: '=',
+interface DrawSqParams {
+  viewCenter: Tripoint
+  highlight: boolean
+  showItems: boolean
+  terrainOverride?: string
+  furnitureOverride?: string
 }
 
 /**
  * 游戏渲染器 - 使用 Canvas 2D 渲染游戏画面
+ * 严格遵循 CDDA 源码的渲染逻辑
  */
 export class GameRenderer {
   private canvas: HTMLCanvasElement
@@ -77,7 +110,7 @@ export class GameRenderer {
    * 清空画布
    */
   clear(): void {
-    this.ctx.fillStyle = '#1a1a1a'
+    this.ctx.fillStyle = '#000000'
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
   }
 
@@ -90,146 +123,179 @@ export class GameRenderer {
 
   /**
    * 渲染游戏地图
+   * 对应 CDDA 的 map::draw() 函数
    */
   render(gameMap: GameMap, centerPos: Tripoint): void {
     this.clear()
 
-    // 计算视口范围
-    const tilesX = Math.ceil(this.canvas.width / this.config.tileSize)
-    const tilesY = Math.ceil(this.canvas.height / this.config.tileSize)
+    // 计算窗口尺寸（以瓦片为单位）
+    const windowWidth = Math.ceil(this.canvas.width / this.config.tileSize)
+    const windowHeight = Math.ceil(this.canvas.height / this.config.tileSize)
 
-    const startX = Math.max(0, centerPos.x - Math.floor(tilesX / 2))
-    const startY = Math.max(0, centerPos.y - Math.floor(tilesY / 2))
-    const endX = Math.min(gameMap.getWidth(), startX + tilesX)
-    const endY = Math.min(gameMap.getHeight(), startY + tilesY)
+    // 默认绘制参数
+    const params: DrawSqParams = {
+      viewCenter: centerPos,
+      highlight: false,
+      showItems: true,
+    }
 
     let renderedCount = 0
-    let nullTileCount = 0
 
-    // 渲染每个 tile
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        const worldPos = { x, y, z: centerPos.z } as Tripoint
-        const screenX = x - startX
-        const screenY = y - startY
+    // 遍历视口内的所有瓦片
+    // CDDA 源码：for (int j = 0; j < getmaxy(w); j++) {
+    //           for (int i = 0; i < getmaxx(w); i++) {
+    //             tripoint_bub_ms p( view_center.x() - getmaxx(w)/2 + i,
+    //                               view_center.y() - getmaxy(w)/2 + j,
+    //                               view_center.z() );
+    for (let screenY = 0; screenY < windowHeight; screenY++) {
+      for (let screenX = 0; screenX < windowWidth; screenX++) {
+        // CDDA 坐标转换公式：p.x() = view_center.x() - getmaxx(w)/2 + i
+        // 反过来：i = p.x() - view_center.x() + getmaxx(w)/2
+        // 我们这里从屏幕坐标计算地图坐标
+        const mapPos = {
+          x: centerPos.x - Math.floor(windowWidth / 2) + screenX,
+          y: centerPos.y - Math.floor(windowHeight / 2) + screenY,
+          z: centerPos.z,
+        } as Tripoint
 
-        const tile = gameMap.getTile(worldPos)
-        if (!tile) {
-          nullTileCount++
+        // 检查地图边界（对应 CDDA 的 inbounds 检查）
+        if (!this.isInBounds(mapPos, gameMap)) {
+          continue
         }
-        renderedCount++
 
-        this.renderTile(worldPos, screenX, screenY, gameMap)
+        // 调用 drawsq 绘制单个瓦片
+        this.drawSq(mapPos, screenX, screenY, params, gameMap)
+        renderedCount++
       }
     }
 
-    console.log(`[GameRenderer] Rendered ${renderedCount} tiles, ${nullTileCount} null tiles, center: (${centerPos.x}, ${centerPos.y})`)
+    debug(LogCategory.RENDERER, `Rendered ${renderedCount} tiles, center: (${centerPos.x}, ${centerPos.y}), window: ${windowWidth}x${windowHeight}`)
   }
 
   /**
-   * 渲染单个 tile
+   * 检查位置是否在地图边界内
+   * 对应 CDDA 的 map::inbounds()
    */
-  private renderTile(worldPos: Tripoint, screenX: number, screenY: number, gameMap: GameMap): void {
-    const tile = gameMap.getTile(worldPos)
+  private isInBounds(pos: Tripoint, gameMap: GameMap): boolean {
+    // 对于 WorldMap，我们假设它是无限的，但需要检查瓦片是否存在
+    const tile = gameMap.getTile(pos)
+    return tile !== null && tile !== undefined
+  }
 
+  /**
+   * 绘制单个瓦片
+   * 对应 CDDA 的 map::drawsq() 函数
+   */
+  private drawSq(
+    worldPos: Tripoint,
+    screenX: number,
+    screenY: number,
+    params: DrawSqParams,
+    gameMap: GameMap
+  ): void {
+    // 获取瓦片数据
+    const tile = gameMap.getTile(worldPos)
     if (!tile) {
-      this.renderUnknownTile(screenX, screenY)
       return
     }
 
-    const tileData = this.getTileData(tile, worldPos, gameMap)
-    this.drawTile(screenX, screenY, tileData)
+    // 调用 draw_maptile 获取显示数据
+    const tileData = this.drawMapTile(tile, worldPos, params, gameMap)
+
+    // 绘制到屏幕
+    this.drawTile(screenX, screenY, tileData, params.highlight)
   }
 
   /**
-   * 获取 tile 的显示数据
+   * 获取瓦片的显示数据
+   * 对应 CDDA 的 map::draw_maptile() 函数
    */
-  private getTileData(tile: MapTile, pos: Tripoint, gameMap: GameMap): TileData {
-    let char = DEFAULT_CHARS.unknown
-    let color = DEFAULT_COLORS.unknown
-    let bgColor = '#1a1a1a'
+  private drawMapTile(
+    tile: MapTile,
+    pos: Tripoint,
+    params: DrawSqParams,
+    gameMap: GameMap
+  ): TileData {
+    let sym = '?'
+    let color = '#808080' // c_light_gray
+    let bgColor = '#000000'
 
-    // 尝试从加载器获取真实地形数据
     const terrainLoader = gameDataLoader.getTerrainLoader()
+    const furnitureLoader = gameDataLoader.getFurnitureLoader()
+
+    // 1. 获取地形符号和颜色
     const terrain = terrainLoader.get(tile.terrain)
-
     if (terrain) {
-      // 使用真实地形的符号和颜色
-      char = terrain.symbol
-      color = terrain.color
+      sym = terrain.symbol
+      color = this.ncColorToHex(terrain.color)
 
-      // 根据地形类型设置背景色
-      if (terrain.name.includes('地板') || terrain.name.includes('floor')) {
-        bgColor = '#1a1a1a'
-      } else if (terrain.name.includes('草') || terrain.name.includes('grass')) {
-        bgColor = '#0d1a0c'
-      } else if (terrain.name.includes('墙') || terrain.name.includes('wall')) {
-        bgColor = '#252525'
-      } else if (terrain.name.includes('水') || terrain.name.includes('water')) {
-        bgColor = '#0a1a2a'
-      }
-    } else {
-      // 降级到硬编码映射（用于测试数据）
-      const terrainId = tile.terrain
-      switch (terrainId) {
-        case 0:
-          char = DEFAULT_CHARS.unknown
-          color = DEFAULT_COLORS.unknown
-          bgColor = '#0a0a0a'
-          break
-        case 1:
-          char = DEFAULT_CHARS.floor
-          color = DEFAULT_COLORS.ground
-          bgColor = '#1a1a1a'
-          break
-        case 2:
-          char = DEFAULT_CHARS.wall
-          color = DEFAULT_COLORS.wall
-          bgColor = '#252525'
-          break
-        case 3:
-          char = DEFAULT_CHARS.door
-          color = '#8B4513'
-          bgColor = '#1a1a1a'
-          break
-        case 4:
-          char = DEFAULT_CHARS.grass
-          color = DEFAULT_COLORS.grass
-          bgColor = '#0d1a0c'
-          break
-        default:
-          char = DEFAULT_CHARS.floor
-          color = DEFAULT_COLORS.ground
-          bgColor = '#1a1a1a'
+      // 检查是否是自动墙壁符号
+      if (terrain.hasFlag?.('AUTO_WALL_SYMBOL')) {
+        // TODO: 实现 determine_wall_corner
+        sym = '#'
       }
     }
 
-    // 检查是否有家具
+    // 2. 家具覆盖地形
     if (tile.furniture !== null) {
-      const furnitureLoader = gameDataLoader.getFurnitureLoader()
       const furniture = furnitureLoader.get(tile.furniture)
       if (furniture) {
-        char = furniture.symbol
-        color = furniture.color
-      } else {
-        char = '='
-        color = '#666666'
+        sym = furniture.symbol
+        color = this.ncColorToHex(furniture.color)
       }
     }
 
-    return { char, color, bgColor }
+    // 3. 陷阱（如果有且玩家感知足够）
+    // TODO: 实现陷阱逻辑
+
+    // 4. 场地效果
+    // TODO: 实现场地效果逻辑
+
+    // 5. 物品
+    if (params.showItems) {
+      // TODO: 实现物品显示
+    }
+
+    return {
+      char: sym,
+      color: color,
+      bgColor: bgColor,
+    }
   }
 
   /**
-   * 绘制单个 tile
+   * 将 ncurses 颜色转换为十六进制
+   * CDDA 使用 ncurses 颜色，这里映射到 CSS 颜色
    */
-  private drawTile(x: number, y: number, data: TileData): void {
+  private ncColorToHex(ncColor: string): string {
+    // CDDA 颜色格式通常是 "c_red" 或 "red" 或十六进制
+    if (ncColor.startsWith('#')) {
+      return ncColor
+    }
+
+    // 移除 c_ 前缀
+    const colorKey = ncColor.replace(/^c_/, '')
+    const hexColor = (CDDA_COLORS as Record<string, string>)[colorKey]
+
+    return hexColor || '#808080'
+  }
+
+  /**
+   * 绘制单个 tile 到屏幕
+   */
+  private drawTile(x: number, y: number, data: TileData, highlight: boolean): void {
     const pixelX = x * this.config.tileSize
     const pixelY = y * this.config.tileSize
 
     // 绘制背景
-    if (data.bgColor !== '#1a1a1a') {
+    if (data.bgColor !== '#000000') {
       this.ctx.fillStyle = data.bgColor
+      this.ctx.fillRect(pixelX, pixelY, this.config.tileSize, this.config.tileSize)
+    }
+
+    // 绘制高亮
+    if (highlight) {
+      this.ctx.fillStyle = 'rgba(255, 255, 0, 0.3)'
       this.ctx.fillRect(pixelX, pixelY, this.config.tileSize, this.config.tileSize)
     }
 
@@ -276,30 +342,20 @@ export class GameRenderer {
   }
 
   /**
-   * 渲染未知/空白 tile
-   */
-  private renderUnknownTile(x: number, y: number): void {
-    const pixelX = x * this.config.tileSize
-    const pixelY = y * this.config.tileSize
-
-    this.ctx.fillStyle = '#0a0a0a'
-    this.ctx.fillRect(pixelX, pixelY, this.config.tileSize, this.config.tileSize)
-  }
-
-  /**
    * 渲染玩家位置
+   * 对应 CDDA 中玩家 '@' 的绘制
    */
   renderPlayer(pos: Tripoint, centerPos: Tripoint): void {
-    const tilesX = Math.ceil(this.canvas.width / this.config.tileSize)
+    // 使用 CDDA 的坐标转换公式
+    const windowWidth = Math.ceil(this.canvas.width / this.config.tileSize)
+    const windowHeight = Math.ceil(this.canvas.height / this.config.tileSize)
 
-    const startX = Math.max(0, centerPos.x - Math.floor(tilesX / 2))
-
-    const screenX = pos.x - startX
-    const screenY = pos.y - (centerPos.y - Math.floor(Math.ceil(this.canvas.height / this.config.tileSize) / 2))
+    // CDDA 公式：k = p.x() + getmaxx(w) / 2 - view_center.x()
+    const screenX = pos.x + Math.floor(windowWidth / 2) - centerPos.x
+    const screenY = pos.y + Math.floor(windowHeight / 2) - centerPos.y
 
     // 检查是否在视口范围内
-    const tilesY = Math.ceil(this.canvas.height / this.config.tileSize)
-    if (screenX < 0 || screenX >= tilesX || screenY < 0 || screenY >= tilesY) {
+    if (screenX < 0 || screenX >= windowWidth || screenY < 0 || screenY >= windowHeight) {
       return
     }
 
@@ -310,41 +366,43 @@ export class GameRenderer {
     this.ctx.fillStyle = 'rgba(74, 158, 255, 0.2)'
     this.ctx.fillRect(pixelX, pixelY, this.config.tileSize, this.config.tileSize)
 
-    // 绘制玩家符号 (@)
-    this.drawCharacter(DEFAULT_CHARS.player, pixelX, pixelY, DEFAULT_COLORS.player)
+    // 绘制玩家符号 (@)，使用 CDDA 的 c_white 颜色
+    this.drawCharacter('@', pixelX, pixelY, CDDA_COLORS.c_white)
   }
 
   /**
    * 打印可视区域的地图数据（ASCII 表示）
    */
   dumpVisibleMap(gameMap: GameMap, centerPos: Tripoint): void {
-    const tilesX = Math.ceil(this.canvas.width / this.config.tileSize)
-    const tilesY = Math.ceil(this.canvas.height / this.config.tileSize)
+    group(LogCategory.RENDERER, '可视区域地图', true)
 
-    const startX = Math.max(0, centerPos.x - Math.floor(tilesX / 2))
-    const startY = Math.max(0, centerPos.y - Math.floor(tilesY / 2))
-    const endX = Math.min(gameMap.getWidth(), startX + tilesX)
-    const endY = Math.min(gameMap.getHeight(), startY + tilesY)
+    const windowWidth = Math.ceil(this.canvas.width / this.config.tileSize)
+    const windowHeight = Math.ceil(this.canvas.height / this.config.tileSize)
 
-    console.log('=== 可视区域地图 ===')
-    console.log(`范围: (${startX}, ${startY}) -> (${endX - 1}, ${endY - 1}), 中心: (${centerPos.x}, ${centerPos.y})`)
-    console.log('')
+    const startX = centerPos.x - Math.floor(windowWidth / 2)
+    const startY = centerPos.y - Math.floor(windowHeight / 2)
+
+    debug(LogCategory.RENDERER, `窗口尺寸: ${windowWidth}x${windowHeight}`)
+    debug(LogCategory.RENDERER, `视图中心: (${centerPos.x}, ${centerPos.y})`)
+    debug(LogCategory.RENDERER, `地图范围: (${startX}, ${startY}) -> (${startX + windowWidth - 1}, ${startY + windowHeight - 1})`)
 
     const terrainLoader = gameDataLoader.getTerrainLoader()
     const furnitureLoader = gameDataLoader.getFurnitureLoader()
 
     // 打印 Y 轴刻度
     let rowHeader = '     '
-    for (let x = startX; x < endX; x += 5) {
+    for (let x = startX; x < startX + windowWidth; x += 5) {
       rowHeader += x.toString().padStart(5)
     }
     console.log(rowHeader)
 
-    for (let y = startY; y < endY; y++) {
-      let row = y.toString().padStart(3) + ' '
+    for (let screenY = 0; screenY < windowHeight; screenY++) {
+      const mapY = startY + screenY
+      let row = mapY.toString().padStart(3) + ' '
 
-      for (let x = startX; x < endX; x++) {
-        const worldPos = { x, y, z: centerPos.z } as Tripoint
+      for (let screenX = 0; screenX < windowWidth; screenX++) {
+        const mapX = startX + screenX
+        const worldPos = { x: mapX, y: mapY, z: centerPos.z } as Tripoint
         const tile = gameMap.getTile(worldPos)
 
         if (!tile) {
@@ -379,31 +437,24 @@ export class GameRenderer {
       console.log(row)
     }
 
-    console.log('')
-    console.log('图例:')
-    console.log('  @ = 玩家')
-    console.log('  # = 墙壁')
-    console.log('  . = 地板')
-    console.log('  + = 门')
-    console.log('  , = 草地')
-    console.log('  ~ = 水')
-    console.log('==================')
+    debug(LogCategory.RENDERER, '图例: @=玩家 #=墙壁 .=地板 +=门 ,=grass ~=水')
+    groupEnd()
   }
 
   /**
    * 打印可视区域的原始瓦片数据
    */
   dumpVisibleRawData(gameMap: GameMap, centerPos: Tripoint): void {
-    const tilesX = Math.ceil(this.canvas.width / this.config.tileSize)
-    const tilesY = Math.ceil(this.canvas.height / this.config.tileSize)
+    group(LogCategory.RENDERER, '可视区域原始数据', true)
 
-    const startX = Math.max(0, centerPos.x - Math.floor(tilesX / 2))
-    const startY = Math.max(0, centerPos.y - Math.floor(tilesY / 2))
-    const endX = Math.min(gameMap.getWidth(), startX + tilesX)
-    const endY = Math.min(gameMap.getHeight(), startY + tilesY)
+    const windowWidth = Math.ceil(this.canvas.width / this.config.tileSize)
+    const windowHeight = Math.ceil(this.canvas.height / this.config.tileSize)
 
-    console.log('=== 可视区域原始数据 ===')
-    console.log(`范围: (${startX}, ${startY}) -> (${endX - 1}, ${endY - 1})`)
+    const startX = centerPos.x - Math.floor(windowWidth / 2)
+    const startY = centerPos.y - Math.floor(windowHeight / 2)
+
+    debug(LogCategory.RENDERER, `窗口尺寸: ${windowWidth}x${windowHeight}`)
+    debug(LogCategory.RENDERER, `地图范围: (${startX}, ${startY}) -> (${startX + windowWidth - 1}, ${startY + windowHeight - 1})`)
 
     const terrainLoader = gameDataLoader.getTerrainLoader()
     const furnitureLoader = gameDataLoader.getFurnitureLoader()
@@ -411,6 +462,8 @@ export class GameRenderer {
     const tileData: Array<{
       x: number
       y: number
+      screenX: number
+      screenY: number
       terrainId: number
       terrainName: string
       terrainSymbol: string
@@ -418,9 +471,11 @@ export class GameRenderer {
       furnitureName: string | null
     }> = []
 
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        const worldPos = { x, y, z: centerPos.z } as Tripoint
+    for (let screenY = 0; screenY < windowHeight; screenY++) {
+      for (let screenX = 0; screenX < windowWidth; screenX++) {
+        const mapX = startX + screenX
+        const mapY = startY + screenY
+        const worldPos = { x: mapX, y: mapY, z: centerPos.z } as Tripoint
         const tile = gameMap.getTile(worldPos)
 
         if (!tile) {
@@ -431,8 +486,10 @@ export class GameRenderer {
         const furniture = tile.furniture !== null ? furnitureLoader.get(tile.furniture) : null
 
         tileData.push({
-          x,
-          y,
+          x: mapX,
+          y: mapY,
+          screenX,
+          screenY,
           terrainId: tile.terrain,
           terrainName: terrain?.name || `Unknown(${tile.terrain})`,
           terrainSymbol: terrain?.symbol || '?',
@@ -443,7 +500,7 @@ export class GameRenderer {
     }
 
     console.table(tileData)
-    console.log('==================')
+    groupEnd()
   }
 
   /**

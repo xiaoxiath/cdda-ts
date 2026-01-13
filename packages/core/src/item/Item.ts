@@ -5,18 +5,29 @@
  * 代表游戏中的实际物品对象，每个物品都有一个 ItemType
  */
 
-import { Record } from 'immutable';
-import type { Tripoint } from '../coordinates';
-import type { TimePoint } from '../types/common';
+import type { TimePoint } from '../field/FieldEntry';
 import type {
   ItemTypeId,
   ItemVars,
   ItemFlagType,
   Mass,
   Volume,
+  SpoilageData,
 } from './types';
 import { ItemType } from './ItemType';
 import { ItemContents } from './ItemContents';
+import {
+  calculateSpoilState,
+  createSpoilageData,
+  getRemainingTime,
+  isFresh,
+  isRotten,
+  isSpoiled,
+  isWilting,
+  getSpoilageProgress,
+  updateSpoilageEnvironment,
+  SpoilState,
+} from './spoilage';
 
 // ============ Item 属性接口 ============
 
@@ -46,6 +57,9 @@ export interface ItemProps {
   burnt?: number;            // 烧伤程度
   frozen?: number;           // 冻结程度
 
+  // 腐烂系统
+  spoilage?: SpoilageData;    // 腐烂数据
+
   // 其他
   owned?: boolean;           // 是否拥有
   missionOwner?: boolean;    // 任务物品
@@ -63,14 +77,105 @@ export interface ItemProps {
 /**
  * Item - 物品实例类
  *
- * 使用 Immutable.js Record 实现不可变数据结构
+ * 使用不可变数据结构（类似 Terrain.ts 的实现模式）
  */
-export class Item extends Record<ItemProps> {
-  // ============ 基础属性访问器 ============
+export class Item {
+  private readonly _props: ItemProps;
 
-  get type(): ItemType {
-    return this.get('type');
+  readonly type!: ItemType;
+  readonly charges!: number;
+  readonly damage!: number;
+  readonly bday!: TimePoint;
+  readonly itemVars!: ItemVars;
+  readonly contents!: ItemContents;
+  readonly tag?: number;
+  readonly active!: boolean;
+  readonly frequency?: number;
+  readonly temperature!: number;
+  readonly tempSpecific?: boolean;
+  readonly burnt?: number;
+  readonly frozen?: number;
+  readonly spoilage?: SpoilageData;
+  readonly owned?: boolean;
+  readonly missionOwner?: boolean;
+  readonly snip?: string;
+  readonly corpse?: {
+    id: string;
+    name: string;
+    transformTime?: number;
+  };
+
+  constructor(props: ItemProps) {
+    const defaults: ItemProps = {
+      type: props.type,
+      charges: 0,
+      damage: 0,
+      bday: Date.now() as TimePoint,
+      itemVars: new Map(),
+      contents: new ItemContents(),
+      active: false,
+      temperature: 20,
+    };
+
+    this._props = {
+      ...defaults,
+      ...props,
+      charges: props.charges ?? defaults.charges,
+      damage: props.damage ?? defaults.damage,
+      bday: props.bday ?? defaults.bday,
+      itemVars: props.itemVars ?? defaults.itemVars,
+      contents: props.contents ?? defaults.contents,
+      active: props.active ?? defaults.active,
+      temperature: props.temperature ?? defaults.temperature,
+    };
+
+    // Define getters for all properties
+    Object.defineProperty(this, 'type', { get: () => this._props.type, enumerable: true });
+    Object.defineProperty(this, 'charges', { get: () => this._props.charges, enumerable: true });
+    Object.defineProperty(this, 'damage', { get: () => this._props.damage, enumerable: true });
+    Object.defineProperty(this, 'bday', { get: () => this._props.bday, enumerable: true });
+    Object.defineProperty(this, 'itemVars', { get: () => this._props.itemVars, enumerable: true });
+    Object.defineProperty(this, 'contents', { get: () => this._props.contents, enumerable: true });
+    Object.defineProperty(this, 'active', { get: () => this._props.active, enumerable: true });
+    Object.defineProperty(this, 'temperature', { get: () => this._props.temperature, enumerable: true });
+    Object.defineProperty(this, 'spoilage', { get: () => this._props.spoilage, enumerable: true });
+
+    // Optional properties
+    if (this._props.tag !== undefined) {
+      Object.defineProperty(this, 'tag', { get: () => this._props.tag, enumerable: true });
+    }
+    if (this._props.frequency !== undefined) {
+      Object.defineProperty(this, 'frequency', { get: () => this._props.frequency, enumerable: true });
+    }
+    if (this._props.tempSpecific !== undefined) {
+      Object.defineProperty(this, 'tempSpecific', { get: () => this._props.tempSpecific, enumerable: true });
+    }
+    if (this._props.burnt !== undefined) {
+      Object.defineProperty(this, 'burnt', { get: () => this._props.burnt, enumerable: true });
+    }
+    if (this._props.frozen !== undefined) {
+      Object.defineProperty(this, 'frozen', { get: () => this._props.frozen, enumerable: true });
+    }
+    if (this._props.owned !== undefined) {
+      Object.defineProperty(this, 'owned', { get: () => this._props.owned, enumerable: true });
+    }
+    if (this._props.missionOwner !== undefined) {
+      Object.defineProperty(this, 'missionOwner', { get: () => this._props.missionOwner, enumerable: true });
+    }
+    if (this._props.light !== undefined) {
+      Object.defineProperty(this, 'light', { get: () => this._props.light, enumerable: true });
+    }
+    if (this._props.snip !== undefined) {
+      Object.defineProperty(this, 'snip', { get: () => this._props.snip, enumerable: true });
+    }
+    if (this._props.corpse !== undefined) {
+      Object.defineProperty(this, 'corpse', { get: () => this._props.corpse, enumerable: true });
+    }
+
+    Object.freeze(this);
   }
+
+  // ============ 基础属性访问器（快捷方式） ============
 
   get id(): ItemTypeId {
     return this.type.id;
@@ -84,40 +189,8 @@ export class Item extends Record<ItemProps> {
     return this.type.description;
   }
 
-  get charges(): number {
-    return this.get('charges') || 0;
-  }
-
-  get damage(): number {
-    return this.get('damage') || 0;
-  }
-
-  get bday(): TimePoint | undefined {
-    return this.get('bday');
-  }
-
-  get itemVars(): ItemVars {
-    return this.get('itemVars') || new Map();
-  }
-
-  get contents(): ItemContents {
-    return this.get('contents') || new ItemContents();
-  }
-
-  get tag(): number | undefined {
-    return this.get('tag');
-  }
-
-  get active(): boolean {
-    return this.get('active') || false;
-  }
-
-  get temperature(): number {
-    return this.get('temperature') || 20;
-  }
-
   get light(): number {
-    return this.get('light') || 0;
+    return this._props.light ?? 0;
   }
 
   // ============ 类型检查快捷方法 ============
@@ -167,7 +240,7 @@ export class Item extends Record<ItemProps> {
   }
 
   isCorpse(): boolean {
-    return this.get('corpse') !== undefined;
+    return this._props.corpse !== undefined;
   }
 
   // ============ 标志检查快捷方法 ============
@@ -214,7 +287,7 @@ export class Item extends Record<ItemProps> {
    * 检查物品是否可用
    */
   isUsable(): boolean {
-    return this.type.hasFlag('ALLOWS_REMOTE_USE') ||
+    return this.type.hasFlag('ALLOWS_REMOTE_USE' as ItemFlagType) ||
            (this.type.isTool() && this.charges > 0);
   }
 
@@ -319,6 +392,333 @@ export class Item extends Record<ItemProps> {
     return this.set('contents', new ItemContents());
   }
 
+  // ============ 腐烂系统方法 ============
+
+  /**
+   * 检查物品是否有腐烽数据
+   */
+  hasSpoilage(): boolean {
+    return this.spoilage !== undefined;
+  }
+
+  /**
+   * 检查物品是否会腐烂
+   */
+  canSpoil(): boolean {
+    return this.isComestible() || this.spoilage !== undefined;
+  }
+
+  /**
+   * 获取当前腐烂状态
+   */
+  getSpoilState(currentTime: TimePoint = Date.now() as TimePoint): SpoilState | null {
+    if (!this.spoilage) {
+      return null;
+    }
+    return calculateSpoilState(this.spoilage, currentTime);
+  }
+
+  /**
+   * 检查是否新鲜
+   */
+  isFresh(currentTime: TimePoint = Date.now() as TimePoint): boolean {
+    if (!this.spoilage) {
+      return true; // 没有腐烘认为是新鲜的
+    }
+    return isFresh(this.spoilage, currentTime);
+  }
+
+  /**
+   * 检查是否枯萎
+   */
+  isWilting(currentTime: TimePoint = Date.now() as TimePoint): boolean {
+    if (!this.spoilage) {
+      return false;
+    }
+    return isWilting(this.spoilage, currentTime);
+  }
+
+  /**
+   * 检查是否腐烂（不可食用）
+   */
+  isSpoiled(currentTime: TimePoint = Date.now() as TimePoint): boolean {
+    if (!this.spoilage) {
+      return false;
+    }
+    return isSpoiled(this.spoilage, currentTime);
+  }
+
+  /**
+   * 检查是否完全腐烂
+   */
+  isRotten(currentTime: TimePoint = Date.now() as TimePoint): boolean {
+    if (!this.spoilage) {
+      return false;
+    }
+    return isRotten(this.spoilage, currentTime);
+  }
+
+  /**
+   * 获取剩余时间（毫秒）
+   */
+  getRemainingTime(currentTime: TimePoint = Date.now() as TimePoint): number {
+    if (!this.spoilage) {
+      return Infinity;
+    }
+    return getRemainingTime(this.spoilage, currentTime);
+  }
+
+  /**
+   * 获取腐烂进度（0-1）
+   */
+  getSpoilageProgress(currentTime: TimePoint = Date.now() as TimePoint): number {
+    if (!this.spoilage) {
+      return 0;
+    }
+    return getSpoilageProgress(this.spoilage, currentTime);
+  }
+
+  /**
+   * 更新腐烂环境因素
+   */
+  updateSpoilageEnvironment(
+    newTemperature: number,
+    newContainerFactor: number,
+    updateTime: TimePoint = Date.now() as TimePoint
+  ): Item {
+    if (!this.spoilage) {
+      return this;
+    }
+    const updatedSpoilage = updateSpoilageEnvironment(
+      this.spoilage,
+      newTemperature,
+      newContainerFactor,
+      updateTime
+    );
+    return this.set('spoilage', updatedSpoilage);
+  }
+
+  /**
+   * 初始化腐烂数据
+   */
+  initSpoilage(spoilTime: number, containerFactor: number = 1): Item {
+    if (this.spoilage) {
+      return this;
+    }
+    const newSpoilage = createSpoilageData(
+      spoilTime,
+      this.bday,
+      this.temperature,
+      containerFactor
+    );
+    return this.set('spoilage', newSpoilage);
+  }
+
+  /**
+   * 获取腐烂状态描述
+   */
+  getSpoilageStateDescription(currentTime: TimePoint = Date.now() as TimePoint): string {
+    const state = this.getSpoilState(currentTime);
+    if (!state) {
+      return '';
+    }
+
+    switch (state) {
+      case SpoilState.FRESH:
+        return '新鲜';
+      case SpoilState.WILTING:
+        return '枯萎';
+      case SpoilState.SPOILED:
+        return '腐烂';
+      case SpoilState.ROTTEN:
+        return '完全腐烂';
+    }
+  }
+
+  // ============ 物品堆叠方法 ============
+
+  /**
+   * 检查物品是否可堆叠
+   */
+  isStackable(): boolean {
+    return this.type.stackable;
+  }
+
+  /**
+   * 获取最大堆叠数量
+   */
+  getMaxStackSize(): number {
+    return this.type.stackSize || 1;
+  }
+
+  /**
+   * 获取当前堆叠数量
+   */
+  getStackSize(): number {
+    if (!this.isStackable()) {
+      return 1;
+    }
+    return Math.max(1, this.charges);
+  }
+
+  /**
+   * 检查是否可以与另一个物品堆叠
+   */
+  canStackWith(other: Item): boolean {
+    // 检查类型 ID 是否相同
+    if (this.id !== other.id) {
+      return false;
+    }
+
+    // 检查是否可堆叠
+    if (!this.isStackable() || !other.isStackable()) {
+      return false;
+    }
+
+    // 检查伤害状态是否相同
+    if (this.damage !== other.damage) {
+      return false;
+    }
+
+    // 如果有特定温度，温度必须相同
+    if (this.tempSpecific && other.tempSpecific) {
+      if (this.temperature !== other.temperature) {
+        return false;
+      }
+    }
+
+    // 腐烂物品的腐烤断据必须相同
+    if (this.spoilage || other.spoilage) {
+      if (!this.spoilage || !other.spoilage) {
+        return false;
+      }
+      if (this.spoilage.created !== other.spoilage.created ||
+          this.spoilage.spoilTime !== other.spoilage.spoilTime) {
+        return false;
+      }
+    }
+
+    // 物品变量必须相同
+    if (this.itemVars.size !== other.itemVars.size) {
+      return false;
+    }
+    for (const [key, value] of this.itemVars) {
+      const otherValue = other.itemVars.get(key);
+      if (otherValue !== value) {
+        return false;
+      }
+    }
+
+    // 内容物状态必须相同
+    if (this.contents.isEmpty() !== other.contents.isEmpty()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 检查堆叠是否已满
+   */
+  isStackFull(): boolean {
+    if (!this.isStackable()) {
+      return true;
+    }
+    return this.getStackSize() >= this.getMaxStackSize();
+  }
+
+  /**
+   * 检查堆叠是否为空
+   */
+  isStackEmpty(): boolean {
+    if (!this.isStackable()) {
+      return false;
+    }
+    return this.charges <= 0;
+  }
+
+  /**
+   * 获取堆叠剩余空间
+   */
+  getStackSpace(): number {
+    if (!this.isStackable()) {
+      return 0;
+    }
+    return Math.max(0, this.getMaxStackSize() - this.getStackSize());
+  }
+
+  /**
+   * 检查是否是单件物品
+   */
+  isSingleItem(): boolean {
+    if (!this.isStackable()) {
+      return true;
+    }
+    return this.getStackSize() === 1;
+  }
+
+  /**
+   * 分离堆叠
+   */
+  splitStack(amount: number): Item {
+    if (!this.isStackable() || amount >= this.getStackSize()) {
+      return this;
+    }
+
+    const currentSize = this.getStackSize();
+    const newAmount = Math.max(1, currentSize - amount);
+
+    return this.set('charges', newAmount);
+  }
+
+  /**
+   * 设置堆叠数量
+   */
+  setStackCount(count: number): Item {
+    if (!this.isStackable()) {
+      return this;
+    }
+
+    const maxSize = this.getMaxStackSize();
+    const validCount = Math.max(1, Math.min(count, maxSize));
+
+    return this.set('charges', validCount);
+  }
+
+  // ============ 物品使用方法 ============
+
+  /**
+   * 检查物品是否可食用
+   */
+  isEdible(currentTime: TimePoint = Date.now() as TimePoint): boolean {
+    if (!this.isComestible()) {
+      return false;
+    }
+    // 不能吃腐烂的食物
+    if (this.isSpoiled(currentTime)) {
+      return false;
+    }
+    // 不能吃冷冻的食物
+    if (this.frozen && this.frozen > 0) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * 检查物品是否可饮用
+   */
+  isDrinkable(currentTime: TimePoint = Date.now() as TimePoint): boolean {
+    return this.isEdible(currentTime);
+  }
+
+  /**
+   * 检查物品是否是武器
+   */
+  isWeapon(): boolean {
+    return this.isGun() || this.type.category === 'WEAPON';
+  }
+
   // ============ 计算属性 ============
 
   /**
@@ -350,7 +750,7 @@ export class Item extends Record<ItemProps> {
   /**
    * 获取显示名称（包含数量、伤害等修饰）
    */
-  getDisplayName(): string {
+  getDisplayName(currentTime: TimePoint = Date.now() as TimePoint): string {
     let name = this.name;
 
     // 添加损坏修饰
@@ -363,13 +763,19 @@ export class Item extends Record<ItemProps> {
       name = `${name} (${this.charges})`;
     }
 
+    // 添加腐烂状态修饰
+    const spoilState = this.getSpoilageStateDescription(currentTime);
+    if (spoilState) {
+      name = `${spoilState}的${name}`;
+    }
+
     return name;
   }
 
   /**
    * 获取详细信息
    */
-  getInfo(): string {
+  getInfo(currentTime: TimePoint = Date.now() as TimePoint): string {
     const info: string[] = [];
 
     info.push(`Type: ${this.type.category}`);
@@ -382,6 +788,26 @@ export class Item extends Record<ItemProps> {
 
     if (this.charges > 0) {
       info.push(`Charges: ${this.charges}`);
+    }
+
+    // 腐烂信息
+    if (this.hasSpoilage()) {
+      const spoilState = this.getSpoilageStateDescription(currentTime);
+      if (spoilState) {
+        info.push(`状态: ${spoilState}`);
+      }
+      const remaining = this.getRemainingTime(currentTime);
+      if (remaining !== Infinity) {
+        const minutes = Math.ceil(remaining / 60000);
+        if (minutes < 60) {
+          info.push(`剩余时间: ${minutes} 分钟`);
+        } else {
+          const hours = (minutes / 60).toFixed(1);
+          info.push(`剩余时间: ${hours} 小时`);
+        }
+      }
+      const progress = this.getSpoilageProgress(currentTime);
+      info.push(`腐烂进度: ${(progress * 100).toFixed(1)}%`);
     }
 
     if (this.type.flags.size > 0) {
@@ -415,6 +841,22 @@ export class Item extends Record<ItemProps> {
    */
   deactivate(): Item {
     return this.set('active', false);
+  }
+
+  // ============ 修改方法 ============
+
+  /**
+   * 创建修改后的副本
+   */
+  set<K extends keyof ItemProps>(key: K, value: ItemProps[K]): Item {
+    return new Item({ ...this._props, [key]: value });
+  }
+
+  /**
+   * 创建副本
+   */
+  clone(): Item {
+    return new Item(this._props);
   }
 
   // ============ 工厂方法 ============

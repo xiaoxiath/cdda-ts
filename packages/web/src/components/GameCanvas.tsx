@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { GameRenderer, TileRenderer } from '../renderers'
 import { keyboardEventToAction } from '../utils'
+import { debug, LogCategory } from '../utils/logger'
 import type { GameState, DisplayMode } from '../types'
 
 interface GameCanvasProps {
@@ -33,7 +34,7 @@ export default function GameCanvas({ gameState, displayMode, onInput }: GameCanv
       // 注意：图块集加载在浏览器环境中需要特殊处理
       // 由于浏览器安全限制，无法直接访问本地文件系统
       // 当前实现将使用 ASCII 降级模式
-      console.log('[GameCanvas] Tile mode enabled, but tileset loading requires a proxy server')
+      debug(LogCategory.RENDERER, 'Tile mode enabled, but tileset loading requires a proxy server')
       setTileRendererLoaded(false)
     } else {
       // ASCII 模式

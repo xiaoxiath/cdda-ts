@@ -9,9 +9,11 @@ import { List } from 'immutable';
 import type {
   Mass,
   Volume,
+  ItemTypeId,
+} from './types';
+import {
   PocketType,
   ContainCode,
-  ItemTypeId,
 } from './types';
 import { Item } from './Item';
 

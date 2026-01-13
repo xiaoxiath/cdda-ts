@@ -5,7 +5,7 @@
  * 使用插槽式设计模式，不同类型物品使用不同的插槽
  */
 
-import { Record } from 'immutable';
+import { Set, Map } from 'immutable';
 import type {
   ItemTypeId,
   ItemCategory,
@@ -293,120 +293,132 @@ export interface ItemTypeProps {
 /**
  * ItemType - 物品类型定义类
  *
- * 使用 Immutable.js Record 实现不可变数据结构
+ * 使用不可变数据结构（类似 Terrain.ts 的实现模式）
  * 使用插槽式设计模式，不同类型物品使用不同的插槽
  */
-export class ItemType extends Record<ItemTypeProps> {
-  // ============ 基础属性访问器 ============
+export class ItemType {
+  private readonly _props: ItemTypeProps;
 
-  get id(): ItemTypeId {
-    return this.get('id');
-  }
+  readonly id!: ItemTypeId;
+  readonly name!: string;
+  readonly description!: string;
+  readonly symbol!: string;
+  readonly color!: string;
+  readonly weight!: Mass;
+  readonly volume!: Volume;
+  readonly price!: number;
+  readonly stackable!: boolean;
+  readonly stackSize!: number;
+  readonly category!: ItemCategory;
+  readonly subcategory?: string;
+  readonly material!: MaterialId[];
+  readonly flags!: Set<ItemFlagType>;
+  readonly qualities!: Map<QualityId, number>;
+  readonly tool?: ToolSlot;
+  readonly comestible?: ComestibleSlot;
+  readonly armor?: ArmorSlot;
+  readonly gun?: GunSlot;
+  readonly ammo?: AmmoSlot;
+  readonly book?: BookSlot;
+  readonly mod?: ModSlot;
+  readonly bionic?: BionicSlot;
+  readonly engine?: EngineSlot;
+  readonly wheel?: WheelSlot;
+  readonly furniture?: FurnitureSlot;
+  readonly petArmor?: PetArmorSlot;
+  readonly generic?: GenericSlot;
 
-  get name(): string {
-    return this.get('name');
-  }
+  constructor(props?: Partial<ItemTypeProps>) {
+    const defaults: ItemTypeProps = {
+      id: '' as ItemTypeId,
+      name: '',
+      description: '',
+      symbol: '?',
+      color: 'white',
+      weight: 100,
+      volume: 250,
+      price: 0,
+      stackable: true,
+      stackSize: 1,
+      category: 'MISCELLANEOUS' as ItemCategory,
+      material: [],
+      flags: Set<ItemFlagType>(),
+      qualities: Map<QualityId, number>(),
+    };
 
-  get description(): string {
-    return this.get('description') || '';
-  }
+    this._props = {
+      ...defaults,
+      ...props,
+      description: props?.description ?? defaults.description,
+      symbol: props?.symbol ?? defaults.symbol,
+      color: props?.color ?? defaults.color,
+      price: props?.price ?? defaults.price,
+      stackable: props?.stackable ?? defaults.stackable,
+      stackSize: props?.stackSize ?? defaults.stackSize,
+      flags: props?.flags ?? defaults.flags,
+      material: props?.material ?? defaults.material,
+      qualities: props?.qualities ?? defaults.qualities,
+    };
 
-  get symbol(): string {
-    return this.get('symbol') || '?';
-  }
+    // Define getters for all properties
+    Object.defineProperty(this, 'id', { get: () => this._props.id, enumerable: true });
+    Object.defineProperty(this, 'name', { get: () => this._props.name, enumerable: true });
+    Object.defineProperty(this, 'description', { get: () => this._props.description, enumerable: true });
+    Object.defineProperty(this, 'symbol', { get: () => this._props.symbol, enumerable: true });
+    Object.defineProperty(this, 'color', { get: () => this._props.color, enumerable: true });
+    Object.defineProperty(this, 'weight', { get: () => this._props.weight, enumerable: true });
+    Object.defineProperty(this, 'volume', { get: () => this._props.volume, enumerable: true });
+    Object.defineProperty(this, 'price', { get: () => this._props.price, enumerable: true });
+    Object.defineProperty(this, 'stackable', { get: () => this._props.stackable, enumerable: true });
+    Object.defineProperty(this, 'stackSize', { get: () => this._props.stackSize, enumerable: true });
+    Object.defineProperty(this, 'category', { get: () => this._props.category, enumerable: true });
+    Object.defineProperty(this, 'subcategory', { get: () => this._props.subcategory, enumerable: true });
+    Object.defineProperty(this, 'material', { get: () => this._props.material, enumerable: true });
+    Object.defineProperty(this, 'flags', { get: () => this._props.flags, enumerable: true });
+    Object.defineProperty(this, 'qualities', { get: () => this._props.qualities, enumerable: true });
 
-  get color(): string {
-    return this.get('color') || 'white';
-  }
+    // Optional slot properties
+    if (this._props.tool !== undefined) {
+      Object.defineProperty(this, 'tool', { get: () => this._props.tool, enumerable: true });
+    }
+    if (this._props.comestible !== undefined) {
+      Object.defineProperty(this, 'comestible', { get: () => this._props.comestible, enumerable: true });
+    }
+    if (this._props.armor !== undefined) {
+      Object.defineProperty(this, 'armor', { get: () => this._props.armor, enumerable: true });
+    }
+    if (this._props.gun !== undefined) {
+      Object.defineProperty(this, 'gun', { get: () => this._props.gun, enumerable: true });
+    }
+    if (this._props.ammo !== undefined) {
+      Object.defineProperty(this, 'ammo', { get: () => this._props.ammo, enumerable: true });
+    }
+    if (this._props.book !== undefined) {
+      Object.defineProperty(this, 'book', { get: () => this._props.book, enumerable: true });
+    }
+    if (this._props.mod !== undefined) {
+      Object.defineProperty(this, 'mod', { get: () => this._props.mod, enumerable: true });
+    }
+    if (this._props.bionic !== undefined) {
+      Object.defineProperty(this, 'bionic', { get: () => this._props.bionic, enumerable: true });
+    }
+    if (this._props.engine !== undefined) {
+      Object.defineProperty(this, 'engine', { get: () => this._props.engine, enumerable: true });
+    }
+    if (this._props.wheel !== undefined) {
+      Object.defineProperty(this, 'wheel', { get: () => this._props.wheel, enumerable: true });
+    }
+    if (this._props.furniture !== undefined) {
+      Object.defineProperty(this, 'furniture', { get: () => this._props.furniture, enumerable: true });
+    }
+    if (this._props.petArmor !== undefined) {
+      Object.defineProperty(this, 'petArmor', { get: () => this._props.petArmor, enumerable: true });
+    }
+    if (this._props.generic !== undefined) {
+      Object.defineProperty(this, 'generic', { get: () => this._props.generic, enumerable: true });
+    }
 
-  get weight(): Mass {
-    return this.get('weight');
-  }
-
-  get volume(): Volume {
-    return this.get('volume');
-  }
-
-  get price(): number {
-    return this.get('price') || 0;
-  }
-
-  get stackable(): boolean {
-    return this.get('stackable') ?? true;
-  }
-
-  get stackSize(): number {
-    return this.get('stackSize') || 1;
-  }
-
-  get category(): ItemCategory {
-    return this.get('category');
-  }
-
-  get material(): MaterialId[] {
-    return this.get('material');
-  }
-
-  get flags(): Set<ItemFlagType> {
-    return this.get('flags');
-  }
-
-  get qualities(): Map<QualityId, number> {
-    return this.get('qualities') || new Map();
-  }
-
-  // ============ 插槽访问器 ============
-
-  get tool(): ToolSlot | undefined {
-    return this.get('tool');
-  }
-
-  get comestible(): ComestibleSlot | undefined {
-    return this.get('comestible');
-  }
-
-  get armor(): ArmorSlot | undefined {
-    return this.get('armor');
-  }
-
-  get gun(): GunSlot | undefined {
-    return this.get('gun');
-  }
-
-  get ammo(): AmmoSlot | undefined {
-    return this.get('ammo');
-  }
-
-  get book(): BookSlot | undefined {
-    return this.get('book');
-  }
-
-  get mod(): ModSlot | undefined {
-    return this.get('mod');
-  }
-
-  get bionic(): BionicSlot | undefined {
-    return this.get('bionic');
-  }
-
-  get engine(): EngineSlot | undefined {
-    return this.get('engine');
-  }
-
-  get wheel(): WheelSlot | undefined {
-    return this.get('wheel');
-  }
-
-  get furniture(): FurnitureSlot | undefined {
-    return this.get('furniture');
-  }
-
-  get petArmor(): PetArmorSlot | undefined {
-    return this.get('petArmor');
-  }
-
-  get generic(): GenericSlot | undefined {
-    return this.get('generic');
+    Object.freeze(this);
   }
 
   // ============ 类型检查方法 ============
@@ -422,7 +434,7 @@ export class ItemType extends Record<ItemTypeProps> {
    * 检查是否为食物/可消耗品
    */
   isComestible(): boolean {
-    return this.comestible !== undefined || this.category === ItemCategory.COMESTIBLE;
+    return this.comestible !== undefined || this.category === 'COMESTIBLE';
   }
 
   /**
@@ -524,7 +536,7 @@ export class ItemType extends Record<ItemTypeProps> {
    * 获取指定品质的等级
    */
   getQualityLevel(qualityId: QualityId): number {
-    return this.qualities.get(qualityId) || 0;
+    return this.qualities.get(qualityId) ?? 0;
   }
 
   /**
@@ -534,18 +546,36 @@ export class ItemType extends Record<ItemTypeProps> {
     return this.qualities.has(qualityId);
   }
 
+  // ============ 修改方法 ============
+
+  /**
+   * 创建修改后的副本
+   */
+  set<K extends keyof ItemTypeProps>(key: K, value: ItemTypeProps[K]): ItemType {
+    return new ItemType({ ...this._props, [key]: value });
+  }
+
+  /**
+   * 获取所有属性
+   */
+  toObject(): ItemTypeProps {
+    return { ...this._props };
+  }
+
+  /**
+   * 创建副本
+   */
+  clone(): ItemType {
+    return new ItemType(this._props);
+  }
+
   // ============ 工厂方法 ============
 
   /**
    * 创建基础 ItemType
    */
   static create(props: ItemTypeProps): ItemType {
-    return new ItemType({
-      ...props,
-      flags: props.flags || new Set(),
-      material: props.material || [],
-      qualities: props.qualities || new Map(),
-    });
+    return new ItemType(props);
   }
 
   /**
@@ -553,8 +583,8 @@ export class ItemType extends Record<ItemTypeProps> {
    */
   static copyFrom(other: ItemType, overrides?: Partial<ItemTypeProps>): ItemType {
     return new ItemType({
-      ...other.toObject(),
+      ...other._props,
       ...(overrides || {}),
-    } as ItemTypeProps);
+    });
   }
 }

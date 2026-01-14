@@ -7,6 +7,8 @@
 import { Creature } from './Creature';
 import { Tripoint } from '../coordinates/Tripoint';
 import { BodyPartId, CreatureSize, CreatureType, CharacterStats } from './types';
+import type { NPCAI } from '../ai/NPCAI';
+import type { GameMap } from '../map/GameMap';
 
 /**
  * NPC 类数据
@@ -59,6 +61,12 @@ export class NPC extends Creature {
    * NPC 所属派系
    */
   public readonly faction: string;
+
+  /**
+   * AI 控制器（可选）
+   * 使用动态属性以保持类不可变
+   */
+  private _ai?: NPCAI;
 
   /**
    * 创建 NPC
@@ -178,5 +186,69 @@ export class NPC extends Creature {
     const factionStr = this.faction !== 'no_faction' ? ` [${this.faction}]` : '';
     const healthStr = this.getHealthStatus();
     return `${this.name} (${attitudeStr}${factionStr}) - ${healthStr}`;
+  }
+
+  // ========== AI 集成 ==========
+
+  /**
+   * 设置 AI 控制器
+   * @param ai NPCAI 实例
+   * @returns 更新后的 NPC（为了保持不可变性，返回新实例）
+   */
+  setAI(ai: NPCAI): this {
+    (this as any)._ai = ai;
+    return this;
+  }
+
+  /**
+   * 获取 AI 控制器
+   */
+  getAI(): NPCAI | undefined {
+    return this._ai;
+  }
+
+  /**
+   * 是否有 AI
+   */
+  hasAI(): boolean {
+    return this._ai !== undefined;
+  }
+
+  /**
+   * 处理回合（集成 AI 决策）
+   * 如果有 AI，会使用 AI 进行决策
+   * @param map 游戏地图
+   */
+  processTurn(map?: GameMap): void {
+    // 调用父类的 processTurn
+    super.processTurn();
+
+    // 如果有 AI 和地图，使用 AI 决策
+    if (this._ai && map) {
+      try {
+        const result = this._ai.processTurn(map);
+        // 更新 AI 引用
+        (this as any)._ai = result;
+      } catch (error) {
+        console.error(`AI error for NPC ${this.id}:`, error);
+      }
+    }
+  }
+
+  /**
+   * 更新 AI（实时模式）
+   * @param map 游戏地图
+   * @param currentTime 当前时间
+   * @param deltaTime 时间增量
+   */
+  updateAI(map: GameMap, currentTime: number, deltaTime: number): void {
+    if (!this._ai) return;
+
+    try {
+      const { ai } = this._ai.update(map, currentTime, deltaTime);
+      (this as any)._ai = ai;
+    } catch (error) {
+      console.error(`AI update error for NPC ${this.id}:`, error);
+    }
   }
 }

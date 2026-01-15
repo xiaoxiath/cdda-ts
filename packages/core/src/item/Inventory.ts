@@ -534,7 +534,7 @@ export class Inventory {
     remaining: number;
   } {
     const consumed: Item[] = [];
-    let inventory = this;
+    let inventory: Inventory = this;
     let remaining = count;
 
     // 查找所有匹配的物品

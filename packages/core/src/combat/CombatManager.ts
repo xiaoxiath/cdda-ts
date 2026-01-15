@@ -11,19 +11,25 @@ import type {
   BodyPartId,
   SkillId as CombatSkillId,
 } from './types';
-import { createBodyPartId, createSkillId } from './types';
+import {
+  createBodyPartId,
+  createSkillId,
+  HitResult,
+} from './types';
 import { DamageInstance } from './DamageInstance';
 import { Resistances } from './Resistances';
 import { DamageHandler, DamageableCreature, DamageApplicationResult } from './DamageHandler';
 import { MeleeCombat, MeleeAttackResult, MeleeCombatCharacter } from './MeleeCombat';
 import { RangedCombat, RangedAttackResult, RangedCombatCharacter, FireMode, AimState } from './RangedCombat';
-import { CombatFeedback, CombatFeedbackEvent, FeedbackManager } from './CombatFeedback';
+import { CombatFeedback, CombatFeedbackEvent, FeedbackManager, FeedbackType } from './CombatFeedback';
 import { EffectCombatIntegration, CombatModifier, CombatEffectContext } from './EffectCombatIntegration';
+import type { FeedbackMessage, VisualFeedback, SoundFeedback } from './CombatFeedback';
+import { EffectIntensity } from '../effect/types';
+import type { AttackResult } from './Attack';
 import type { Item } from '../item/Item';
 import type { Effect } from '../effect/Effect';
 import type { EffectManager } from '../effect/EffectManager';
 import type { SkillId as ItemSkillId } from '../item/types';
-import { List } from 'immutable';
 
 // ============ 战斗事件 ============
 
@@ -43,6 +49,30 @@ export interface CombatEvent {
   targetId?: string;
   /** 事件数据 */
   data?: any;
+}
+
+// ============ 装填结果 ============
+
+/**
+ * 装填动作结果
+ */
+export interface ReloadActionResult {
+  /** 是否成功 */
+  success: boolean;
+  /** 装填数量 */
+  amountLoaded: number;
+  /** 装填时间（毫秒） */
+  reloadTime: number;
+  /** 更新后的武器 */
+  updatedWeapon?: Item;
+  /** 剩余弹药 */
+  remainingAmmo?: Item;
+  /** 反馈信息 */
+  feedback: CombatFeedbackEvent;
+  /** 新状态 */
+  newState: CombatState;
+  /** 错误信息（如果失败） */
+  error?: string;
 }
 
 // ============ 战斗参与者 ============
@@ -638,7 +668,7 @@ export class CombatManager {
       // 触发击杀效果
       const killContext: CombatEffectContext = {
         ...attackerContext,
-        isCritical: result.attackResult.isCritical,
+        isCritical: result.attackResult.critical,
       };
       const triggeredOnKill = EffectCombatIntegration.checkTriggeredEffects(
         attackerEffects,
@@ -647,10 +677,10 @@ export class CombatManager {
       );
     } else {
       // 未击杀，检查命中效果
-      if (result.attackResult.hit) {
+      if (result.attackResult.hitResult !== HitResult.MISS) {
         const hitContext: CombatEffectContext = {
           ...attackerContext,
-          isCritical: result.attackResult.isCritical,
+          isCritical: result.attackResult.critical,
           isMiss: false,
         };
         const triggeredOnHit = EffectCombatIntegration.checkTriggeredEffects(
@@ -673,7 +703,7 @@ export class CombatManager {
     }
 
     // 检查格挡/闪避效果
-    if (result.blockResult?.success) {
+    if (result.blockResult?.blocked) {
       const blockContext: CombatEffectContext = {
         isAttacker: false,
         attackType: 'melee',
@@ -686,7 +716,7 @@ export class CombatManager {
       );
     }
 
-    if (result.dodgeResult?.success) {
+    if (result.dodgeResult?.dodged) {
       const dodgeContext: CombatEffectContext = {
         isAttacker: false,
         attackType: 'melee',
@@ -735,7 +765,8 @@ export class CombatManager {
     }
 
     // 检查弹药
-    if (weapon.charges <= 0) {
+    const weaponCharges = typeof weapon.charges === 'number' ? weapon.charges : 0;
+    if (weaponCharges <= 0) {
       const feedback = CombatFeedback.generateWeaponEmptyFeedback(weapon.type.name);
       return {
         success: false,
@@ -827,9 +858,9 @@ export class CombatManager {
     // 处理武器更新（支持 Immutable.Record 和普通对象）
     let updatedWeapon: Item;
     if (typeof (weapon as any).set === 'function') {
-      updatedWeapon = (weapon as any).set('charges', weapon.charges - ammoConsumed);
+      updatedWeapon = (weapon as any).set('charges', this.getItemCharges(weapon) - ammoConsumed);
     } else {
-      updatedWeapon = { ...weapon, charges: weapon.charges - ammoConsumed } as Item;
+      updatedWeapon = { ...weapon, charges: this.getItemCharges(weapon) - ammoConsumed } as Item;
     }
     const updatedAttacker: Combatant = {
       ...attacker,
@@ -1021,8 +1052,9 @@ export class CombatManager {
     }
 
     // 检查是否已装满
-    const magazineSize = weapon.type.gun?.magazineSize || 0;
-    const currentAmmo = weapon.charges;
+    const magazineSizeRaw = weapon.type.gun?.magazineSize || 0;
+    const magazineSize = typeof magazineSizeRaw === 'number' ? magazineSizeRaw : 0;
+    const currentAmmo = this.getItemCharges(weapon);
 
     if (currentAmmo >= magazineSize) {
       return this.createReloadErrorResult('武器已装满');
@@ -1040,13 +1072,14 @@ export class CombatManager {
     }
 
     // 检查弹药兼容性
-    if (!weapon.type.gun?.ammo?.includes(ammoItem.type.ammo?.type)) {
+    const ammoType = ammoItem.type.ammo?.type;
+    if (!ammoType || !weapon.type.gun?.ammo?.includes(ammoType)) {
       return this.createReloadErrorResult('弹药不兼容');
     }
 
     // 计算装填数量
     const needed = magazineSize - currentAmmo;
-    const available = ammoItem.charges;
+    const available = this.getItemCharges(ammoItem);
     const amountToLoad = request.amount ? Math.min(request.amount, needed) : Math.min(available, needed);
 
     if (amountToLoad <= 0) {
@@ -1113,6 +1146,34 @@ export class CombatManager {
   }
 
   /**
+   * 安全地获取物品 charges 数值
+   */
+  private getItemCharges(item: Item): number {
+    return typeof item.charges === 'number' ? item.charges : 0;
+  }
+
+  /**
+   * 获取武器弹匣容量
+   */
+  private getMagazineSize(weapon: Item): number {
+    const magazineSizeRaw = weapon.type.gun?.magazineSize || 0;
+    return typeof magazineSizeRaw === 'number' ? magazineSizeRaw : 0;
+  }
+
+  /**
+   * 将 EffectIntensity 转换为数字
+   */
+  private effectIntensityToNumber(intensity: EffectIntensity): number {
+    switch (intensity) {
+      case 'minor': return 1;
+      case 'moderate': return 2;
+      case 'severe': return 3;
+      case 'deadly': return 4;
+      default: return 2;
+    }
+  }
+
+  /**
    * 计算装填时间
    */
   private calculateReloadTime(weapon: Item, skillLevel: number): number {
@@ -1142,8 +1203,8 @@ export class CombatManager {
       return false;
     }
 
-    const magazineSize = weapon.type.gun?.magazineSize || 0;
-    return weapon.charges < magazineSize;
+    const magazineSize = this.getMagazineSize(weapon);
+    return this.getItemCharges(weapon) < magazineSize;
   }
 
   /**
@@ -1160,8 +1221,8 @@ export class CombatManager {
       return null;
     }
 
-    const current = weapon.charges;
-    const max = weapon.type.gun?.magazineSize || 0;
+    const current = this.getItemCharges(weapon);
+    const max = this.getMagazineSize(weapon);
 
     return {
       current,
@@ -1174,12 +1235,21 @@ export class CombatManager {
    * 创建装填错误结果
    */
   private createReloadErrorResult(error: string): ReloadActionResult {
+    const message: FeedbackMessage = {
+      id: `reload_error_${Date.now()}`,
+      text: `装填失败: ${error}`,
+      type: FeedbackType.SYSTEM_MESSAGE,
+      priority: 5,
+      relatedEntities: {},
+      timestamp: Date.now(),
+    };
+
     return {
       success: false,
       amountLoaded: 0,
       reloadTime: 0,
       feedback: {
-        messages: [`装填失败: ${error}`],
+        messages: [message],
         visuals: [],
         sounds: [],
       },
@@ -1331,7 +1401,7 @@ export class CombatManager {
     let newState = this.state.withCombatants(newCombatants);
 
     // 生成反馈
-    const intensity = effect.intensity;
+    const intensity = this.effectIntensityToNumber(effect.intensity);
     const feedback = CombatFeedback.generateEffectAppliedFeedback(
       combatant.name,
       effect.definition.name,
@@ -1352,9 +1422,20 @@ export class CombatManager {
     // 检查是否有致命效果
     const killMessage = updatedEffectManager.getKillMessage();
     if (killMessage) {
-      const killFeedback = CombatFeedback.generateCustomFeedback([killMessage]);
+      // 创建击杀反馈
+      const killFeedback: CombatFeedbackEvent = {
+        messages: [{
+          id: `kill_${combatantId}_${Date.now()}`,
+          text: killMessage,
+          type: FeedbackType.KILL_BLOW,
+          priority: 10,
+          relatedEntities: { target: combatantId },
+          timestamp: Date.now(),
+        }],
+        visuals: [],
+        sounds: [],
+      };
       newState.feedbackManager.addEvent(killFeedback);
-      newState = newState.withFeedbackManager(newState.feedbackManager);
 
       // 标记为死亡
       const deadCombatant: Combatant = {
@@ -1409,9 +1490,18 @@ export class CombatManager {
       // 处理触发的效果
       for (const effect of triggeredEffects) {
         // 生成反馈
-        const feedback = CombatFeedback.generateCustomFeedback([
-          `${combatant.name} 在战斗开始时触发 ${effect.definition.name} 效果`
-        ]);
+        const feedback: CombatFeedbackEvent = {
+          messages: [{
+            id: `effect_start_${combatantId}_${Date.now()}`,
+            text: `${combatant.name} 在战斗开始时触发 ${effect.definition.name} 效果`,
+            type: FeedbackType.EFFECT_APPLIED,
+            priority: 5,
+            relatedEntities: { source: combatantId },
+            timestamp: Date.now(),
+          }],
+          visuals: [],
+          sounds: [],
+        };
         newState.feedbackManager.addEvent(feedback);
       }
 
@@ -1461,9 +1551,18 @@ export class CombatManager {
           updatedEffectManager = updatedEffectManager.removeEffect(effect.definition.id);
 
           // 生成反馈
-          const feedback = CombatFeedback.generateCustomFeedback([
-            `${combatant.name} 的 ${effect.definition.name} 效果消失了`
-          ]);
+          const feedback: CombatFeedbackEvent = {
+            messages: [{
+              id: `effect_end_${combatantId}_${Date.now()}`,
+              text: `${combatant.name} 的 ${effect.definition.name} 效果消失了`,
+              type: FeedbackType.EFFECT_EXPIRED,
+              priority: 5,
+              relatedEntities: { source: combatantId },
+              timestamp: Date.now(),
+            }],
+            visuals: [],
+            sounds: [],
+          };
           newState.feedbackManager.addEvent(feedback);
         }
       }

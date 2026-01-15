@@ -7,7 +7,7 @@
 
 import { Map } from 'immutable';
 import { MaterialDefinition, MaterialDefinitions } from './Material';
-import type { DamageType } from '../combat/types';
+import { DamageType } from '../damage/types';
 
 // 重新导出 MaterialDefinitions 以便测试使用
 export { MaterialDefinitions };
@@ -270,17 +270,17 @@ export function calculateEffectiveArmor(
   const bashResistance = calculateBashResistance(materials, thickness, rigid);
 
   // 计算伤害类型抗性
-  const resistances = Map<DamageType, number>({
-    'CUT': calculateMaterialResistance(materials, 'CUT', thickness),
-    'STAB': calculateMaterialResistance(materials, 'STAB', thickness),
-    'BASH': calculateMaterialResistance(materials, 'BASH', thickness),
-    'BULLET': calculateMaterialResistance(materials, 'BULLET', thickness),
-    'ACID': calculateMaterialResistance(materials, 'ACID', thickness),
-    'HEAT': calculateMaterialResistance(materials, 'HEAT', thickness),
-    'COLD': calculateMaterialResistance(materials, 'COLD', thickness),
-    'ELECTRIC': calculateMaterialResistance(materials, 'ELECTRIC', thickness),
-    'BIAS': calculateMaterialResistance(materials, 'BIAS', thickness), // 免疫系统
-  });
+  const resistances = Map<DamageType, number>([
+    [DamageType.CUT, calculateMaterialResistance(materials, DamageType.CUT, thickness)],
+    [DamageType.STAB, calculateMaterialResistance(materials, DamageType.STAB, thickness)],
+    [DamageType.BASH, calculateMaterialResistance(materials, DamageType.BASH, thickness)],
+    [DamageType.BULLET, calculateMaterialResistance(materials, DamageType.BULLET, thickness)],
+    [DamageType.ACID, calculateMaterialResistance(materials, DamageType.ACID, thickness)],
+    [DamageType.HEAT, calculateMaterialResistance(materials, DamageType.HEAT, thickness)],
+    [DamageType.COLD, calculateMaterialResistance(materials, DamageType.COLD, thickness)],
+    [DamageType.ELECTRIC, calculateMaterialResistance(materials, DamageType.ELECTRIC, thickness)],
+    [DamageType.BIOLOGICAL, calculateMaterialResistance(materials, DamageType.BIOLOGICAL, thickness)], // 免疫系统
+  ]);
 
   // 计算有效厚度
   const effectiveThickness = calculateMaterialThickness(materials, thickness);
@@ -305,11 +305,13 @@ export function getMaterialsByIds(materialIds: string[]): MaterialDefinition[] {
   const materials: MaterialDefinition[] = [];
 
   // 将 MaterialDefinitions 转换为数组以便遍历
-  const materialArray = Object.values(MaterialDefinitions).filter(m => m && typeof m === 'object');
+  const materialArray: MaterialDefinition[] = Object.values(MaterialDefinitions).filter(
+    (m): m is MaterialDefinition => m && typeof m === 'object'
+  ) as MaterialDefinition[];
 
   for (const id of materialIds) {
     // 首先尝试通过 name 匹配（小写，如 'steel', 'cotton'）
-    let material = materialArray.find(m => m && m.name === id);
+    let material: MaterialDefinition | undefined = materialArray.find(m => m && m.name === id);
 
     // 如果没有找到，尝试通过 id 匹配（如 'material_steel'）
     if (!material) {
@@ -322,8 +324,9 @@ export function getMaterialsByIds(materialIds: string[]): MaterialDefinition[] {
     // 如果还没找到，尝试作为对象键查找（大写，如 'STEEL'）
     if (!material) {
       const upperKey = id.toUpperCase() as keyof typeof MaterialDefinitions;
-      if (MaterialDefinitions[upperKey]) {
-        material = MaterialDefinitions[upperKey];
+      const foundMaterial = MaterialDefinitions[upperKey] as MaterialDefinition | undefined;
+      if (foundMaterial) {
+        material = foundMaterial;
       }
     }
 
@@ -463,6 +466,6 @@ export function getCommonArmorData(
   coverage: number,
   rigid: boolean = false
 ): EffectiveArmor {
-  const materialIds = MaterialCombinations[combination];
+  const materialIds = [...MaterialCombinations[combination]];
   return MaterialArmor.calculateFromIds(materialIds, thickness, coverage, rigid);
 }

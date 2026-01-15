@@ -600,7 +600,7 @@ export class ItemLoader {
           // 扩展模式：合并 flags
           const parentFlags = (parentJson[key] as string[]) || [];
           const childFlags = value as string[];
-          merged[key] = [...new Set([...parentFlags, ...childFlags])];
+          merged[key] = [...parentFlags, ...childFlags].filter((flag, index, arr) => arr.indexOf(flag) === index);
         }
       }
       // 数组属性：子类覆盖
@@ -736,7 +736,7 @@ export class ItemLoader {
           // 扩展模式：合并 flags
           const parentFlags = (parent[key] as string[]) || [];
           const childFlags = value as string[];
-          merged[key] = [...new Set([...parentFlags, ...childFlags])];
+          merged[key] = [...parentFlags, ...childFlags].filter((flag, index, arr) => arr.indexOf(flag) === index);
         }
       }
       // 数组属性：子类覆盖

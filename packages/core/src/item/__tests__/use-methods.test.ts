@@ -1075,8 +1075,9 @@ describe('use-methods - 书籍方法', () => {
         isBook: true,
         book: {
           level: 10,
-          requiredSkill: 'cooking',
-          requiredLevel: 5,
+          requiredSkills: [
+            { skill: 'cooking', level: 5 },
+          ],
         },
       });
 
@@ -1096,8 +1097,9 @@ describe('use-methods - 书籍方法', () => {
         isBook: true,
         book: {
           level: 10,
-          requiredSkill: 'cooking',
-          requiredLevel: 5,
+          requiredSkills: [
+            { skill: 'cooking', level: 5 },
+          ],
         },
       });
 

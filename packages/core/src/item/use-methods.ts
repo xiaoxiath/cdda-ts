@@ -503,11 +503,12 @@ export const bookReadMethod: UseMethodDefinition = {
     }
 
     // 检查技能要求
-    if (book.requiredSkill && context.user) {
-      const userSkill = context.user.skills?.get(book.requiredSkill);
-      const requiredLevel = book.requiredLevel || 0;
-      if ((userSkill || 0) < requiredLevel) {
-        return false;
+    if (book.requiredSkills && book.requiredSkills.length > 0 && context.user) {
+      for (const req of book.requiredSkills) {
+        const userSkill = context.user.skills?.get(req.skill as any);
+        if ((userSkill || 0) < req.level) {
+          return false;
+        }
       }
     }
 
@@ -528,23 +529,23 @@ export const bookReadMethod: UseMethodDefinition = {
     const sideEffects: UseSideEffect[] = [];
 
     // 添加技能经验
-    if (book.skill && book.skillLevel) {
+    if (book.skill && book.level) {
       sideEffects.push({
         type: 'skill',
         id: book.skill,
-        value: book.skillLevel,
+        value: book.level,
         message: `你阅读了 ${item.name}，获得了 ${book.skill} 经验`,
       });
     }
 
-    // 添加效果
-    if (book.effect) {
-      sideEffects.push({
-        type: 'effect',
-        id: book.effect,
-        message: `你获得了 ${book.effect} 效果`,
-      });
-    }
+    // 添加效果（如果 BookSlot 有 effect 属性的话）
+    // if (book.effect) {
+    //   sideEffects.push({
+    //     type: 'effect',
+    //     id: book.effect,
+    //     message: `你获得了 ${book.effect} 效果`,
+    //   });
+    // }
 
     return {
       success: true,

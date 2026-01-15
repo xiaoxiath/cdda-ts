@@ -174,10 +174,34 @@ export class OmTerrain {
   }
 
   /**
+   * 获取名称
+   */
+  getName(): string {
+    return this.name
+  }
+
+  /**
    * 检查是否包含指定 ID
    */
   hasId(id: string): boolean {
     return this.ids.includes(id)
+  }
+
+  /**
+   * 创建 OmTerrain
+   */
+  static create(props: {
+    primaryId: string
+    name?: string
+    sym?: string
+    color?: string
+  }): OmTerrain {
+    return new OmTerrain({
+      ids: [props.primaryId],
+      name: props.name || props.primaryId,
+      symbol: props.sym || '?',
+      color: props.color || 'white',
+    })
   }
 
   /**
@@ -278,5 +302,24 @@ export class OmTerrain {
       mapgenIds: props.mapgenIds !== undefined ? props.mapgenIds : new Map(this.mapgenIds),
       isAbstract: props.isAbstract !== undefined ? props.isAbstract : this.isAbstract,
     })
+  }
+
+  /**
+   * 转换为 JSON
+   */
+  toJson(): OmTerrainJson {
+    return {
+      type: 'overmap_terrain',
+      id: this.ids.length === 1 ? this.ids[0] : Array.from(this.ids),
+      name: this.name,
+      sym: this.symbol,
+      color: this.color,
+      vision_levels: this.visionLevels || undefined,
+      see_cost: this.seeCost || undefined,
+      travel_cost_type: this.travelCostType || undefined,
+      extras: this.extras || undefined,
+      mondensity: this.mondensity || undefined,
+      flags: Array.from(this.flags),
+    }
   }
 }

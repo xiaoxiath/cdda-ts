@@ -38,7 +38,12 @@ export class BehaviorTree {
 
   // 执行状态（使用对象包装以便更新）
   private _state: {
-    stats: BehaviorTreeStats;
+    stats: {
+      totalExecutions: number;
+      successCount: number;
+      failureCount: number;
+      averageExecutionTime: number;
+    };
     isAborted: boolean;
     currentNode: BehaviorNode | null;
     lastExecutionTime: number;

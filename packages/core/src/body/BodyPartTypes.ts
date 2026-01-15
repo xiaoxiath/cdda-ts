@@ -6,7 +6,8 @@
  */
 
 import type { BodyPartId, BodyPartType } from '../creature/types';
-import type { SubBodyPartId, SubBodyPartType } from './SubBodyPart';
+import type { SubBodyPartId } from './SubBodyPart';
+import type { SubBodyPartType } from '../combat/types';
 
 // ============================================================================
 // 身体部位状态枚举
@@ -30,8 +31,16 @@ export enum BodyPartStatus {
   // ========== 基础状态 ==========
   HEALTHY = 'healthy',           // 健康 - 无任何负面状态
   BRUISED = 'bruised',           // 淤伤 - 轻微伤害，轻微疼痛
+  HURT = 'hurt',                 // 受伤 (30-59% HP) - 通用伤害状态
+  BADLY_HURT = 'badly_hurt',     // 重伤 (10-29% HP) - 严重伤害状态
   CUT = 'cut',                   // 割伤 - 出血，可能感染
   BITED = 'bitten',              // 咬伤 - 可能感染，出血
+  BITE = 'bite',                 // 咬伤状态（BITED的别名，兼容性）
+  SCRATCH = 'scratch',           // 抓伤 - 轻微皮肤损伤
+  BURN = 'burn',                 // 烧伤 - 火焰伤害
+  FROSTBITE = 'frostbite',       // 冻伤 - 寒冷伤害
+  BLISTERS = 'blisters',         // 水泡 - 摩擦或轻微烧伤
+  GRAZE = 'graze',               // 擦伤 - 表皮损伤
 
   // ========== 骨骼状态 ==========
   BROKEN = 'broken',             // 骨折 - 严重影响功能，需要固定
@@ -203,21 +212,21 @@ export interface HealResult {
  */
 export interface BodyPartImpact {
   /** 移动速度修正 (0-1) */
-  readonly speedModifier: number;
+  speedModifier: number;
   /** 操作能力修正 (0-1) */
-  readonly dexterityModifier: number;
+  dexterityModifier: number;
   /** 战斗能力修正 (0-1) */
-  readonly combatModifier: number;
+  combatModifier: number;
   /** 感知能力修正 (0-1) */
-  readonly perceptionModifier: number;
+  perceptionModifier: number;
   /** 负重能力修正 (0-1) */
-  readonly carryModifier: number;
+  carryModifier: number;
   /** 是否可以移动 */
-  readonly canMove: boolean;
+  canMove: boolean;
   /** 是否可以使用双手 */
-  readonly canUseBothHands: boolean;
+  canUseBothHands: boolean;
   /** 是否可以进行精细操作 */
-  readonly canDoFineWork: boolean;
+  canDoFineWork: boolean;
 }
 
 // ============================================================================
@@ -309,20 +318,3 @@ export interface BodyPartStats {
   /** 健康百分比 */
   readonly healthPercentage: number;
 }
-
-// ============================================================================
-// 导出所有类型
-// ============================================================================
-
-export type {
-  BodyPartProps,
-  SubBodyPartProps,
-  BodyPartEffect,
-  DamageResult,
-  HealResult,
-  BodyPartImpact,
-  MedicalItemProps,
-  RecoveryRate,
-  BodyPartQuery,
-  BodyPartStats,
-};

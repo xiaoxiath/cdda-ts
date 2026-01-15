@@ -211,15 +211,15 @@ describe('calculateEffectiveArmor', () => {
 
     const armor = calculateEffectiveArmor(armorData);
 
-    expect(armor.resistances.has('CUT')).toBe(true);
-    expect(armor.resistances.has('STAB')).toBe(true);
-    expect(armor.resistances.has('BASH')).toBe(true);
-    expect(armor.resistances.has('BULLET')).toBe(true);
-    expect(armor.resistances.has('HEAT')).toBe(true);
-    expect(armor.resistances.has('COLD')).toBe(true);
-    expect(armor.resistances.has('ACID')).toBe(true);
-    expect(armor.resistances.has('ELECTRIC')).toBe(true);
-    expect(armor.resistances.has('BIAS')).toBe(true);
+    expect(armor.resistances.has('cut')).toBe(true);
+    expect(armor.resistances.has('stab')).toBe(true);
+    expect(armor.resistances.has('bash')).toBe(true);
+    expect(armor.resistances.has('bullet')).toBe(true);
+    expect(armor.resistances.has('heat')).toBe(true);
+    expect(armor.resistances.has('cold')).toBe(true);
+    expect(armor.resistances.has('acid')).toBe(true);
+    expect(armor.resistances.has('electric')).toBe(true);
+    expect(armor.resistances.has('biological')).toBe(true);
   });
 });
 

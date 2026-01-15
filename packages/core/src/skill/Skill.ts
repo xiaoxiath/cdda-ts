@@ -155,7 +155,7 @@ export class Skill {
    * 获取实践等级（通过实际使用获得的等级）
    * 这是 CDDA 中的 level() 函数对应的实现
    */
-  level(): SkillLevel {
+  getLevel(): SkillLevel {
     return this.level;
   }
 
@@ -163,7 +163,7 @@ export class Skill {
    * 获取理论等级（通过学习获得的等级）
    * 这是 CDDA 中的 theory() 函数对应的实现
    */
-  theory(): SkillLevel {
+  getTheory(): SkillLevel {
     return this.theory.theoryLevel;
   }
 

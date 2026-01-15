@@ -137,7 +137,8 @@ export class Scheduler {
    * @param isPlayer 是否为玩家
    */
   addCreature(creature: Creature, isPlayer: boolean = false): Scheduler {
-    const speed = creature.speed ?? 100;
+    // 检查生物是否有 speed 属性（如 MockCreature），否则使用默认值
+    const speed = 'speed' in creature ? (creature as any).speed : 100;
     const budget = Math.floor(speed);
 
     const entry: ScheduleEntry = {
@@ -328,7 +329,8 @@ export class Scheduler {
     // 重置所有生物的预算
     const newEntries = this.entries.map(entry => {
       const creature = map.creatures.get(entry.creatureId);
-      const speed = creature?.speed ?? 100;
+      // 检查生物是否有 speed 属性（如 MockCreature），否则使用默认值
+      const speed = creature && 'speed' in creature ? (creature as any).speed : 100;
       const budget = Math.floor(speed);
 
       return {

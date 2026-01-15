@@ -44,7 +44,8 @@
       "Bash(tree:*)",
       "Bash(xargs:*)",
       "Bash(timeout 60 npm test:*)",
-      "Bash(perl:*)"
+      "Bash(perl:*)",
+      "Bash(cut:*)"
     ]
   }
 }

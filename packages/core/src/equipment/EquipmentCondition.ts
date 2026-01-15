@@ -354,8 +354,8 @@ export class EquipmentCondition {
     if (item.wetness) {
       const wetnessLevel = EquipmentCondition.getWetnessLevel(item.wetness);
       // 电子设备在潮湿时可能失效
-      if (item.materialDefinition?.properties.conductivity > 0.5 &&
-          wetnessLevel === WetnessLevel.DRENCHED) {
+      const conductivity = item.materialDefinition?.properties.conductivity ?? 0;
+      if (conductivity > 0.5 && wetnessLevel === WetnessLevel.DRENCHED) {
         return false;
       }
     }

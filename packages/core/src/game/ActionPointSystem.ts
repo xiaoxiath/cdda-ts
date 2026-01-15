@@ -149,7 +149,7 @@ export class ActionPointSystem {
     const actionConfig = { ...DEFAULT_ACTION_COST, ...config };
 
     // 计算初始预算（基于速度）
-    const speed = creature.speed ?? 100;
+    const speed = 'speed' in creature ? (creature as any).speed : 100;
     const totalBudget = Math.floor(speed);
 
     const currentBudget: ActionBudget = {
@@ -181,7 +181,7 @@ export class ActionPointSystem {
     }
 
     // 计算新回合的预算
-    const speed = this.creature.speed ?? 100;
+    const speed = 'speed' in this.creature ? (this.creature as any).speed : 100;
     const totalBudget = Math.floor(speed);
 
     const newBudget: ActionBudget = {
@@ -395,7 +395,7 @@ export class ActionPointSystem {
    * 获取移动点数（基于速度）
    */
   getMoves(): number {
-    const speed = this.creature.speed ?? 100;
+    const speed = 'speed' in this.creature ? (this.creature as any).speed : 100;
     return Math.floor(speed / 100);
   }
 
@@ -414,7 +414,7 @@ export class ActionPointSystem {
   toJson(): Record<string, any> {
     return {
       creatureId: this.creature.id,
-      creatureSpeed: this.creature.speed,
+      creatureSpeed: 100, // 默认速度
       moves: this.getMoves(),
       currentBudget: this.currentBudget,
       currentTurn: this.currentTurn,

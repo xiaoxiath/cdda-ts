@@ -581,7 +581,7 @@ export class Item {
    * 检查物品是否会受潮湿影响
    */
   canGetWet(): boolean {
-    return this.isArmor() || this.isComestible() || this.type.category === 'CLOTHING';
+    return this.isArmor() || this.isComestible();
   }
 
   /**

@@ -662,7 +662,7 @@ export class CombatFeedback {
     // 声音效果
     const sounds: SoundFeedback[] = [
       {
-        type: 'reload',
+        sound: SoundEffect.RELOAD,
         volume: 0.5,
         position: { x: 0, y: 0, z: 0 },
       },

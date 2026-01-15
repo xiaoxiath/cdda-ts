@@ -8,7 +8,7 @@
  */
 
 import { Map, List } from 'immutable';
-import type { BodyPartId } from '../creature/types';
+import { BodyPartId, BodyPartType } from '../creature/types';
 import type { SubBodyPartId } from './SubBodyPart';
 import {
   BodyPartHealth,
@@ -57,7 +57,7 @@ interface BodyPartCtorProps {
  */
 export class BodyPart {
   readonly id!: BodyPartId;
-  readonly type!: any; // BodyPartType
+  readonly type!: BodyPartType;
   readonly name!: string;
   readonly maxHP!: number;
   readonly currentHP!: number;
@@ -114,6 +114,30 @@ export class BodyPart {
   }
 
   /**
+   * 创建修改后的副本
+   *
+   * 基于当前实例创建一个新实例，覆盖指定的属性
+   */
+  with(updates: Partial<BodyPartCtorProps>): BodyPart {
+    return new BodyPart({
+      id: updates.id !== undefined ? updates.id : this.id,
+      type: updates.type !== undefined ? updates.type : this.type,
+      name: updates.name !== undefined ? updates.name : this.name,
+      maxHP: updates.maxHP !== undefined ? updates.maxHP : this.maxHP,
+      currentHP: updates.currentHP !== undefined ? updates.currentHP : this.currentHP,
+      size: updates.size !== undefined ? updates.size : this.size,
+      isLethal: updates.isLethal !== undefined ? updates.isLethal : this.isLethal,
+      canBeMissing: updates.canBeMissing !== undefined ? updates.canBeMissing : this.canBeMissing,
+      status: updates.status !== undefined ? updates.status : this.status,
+      statusDuration: updates.statusDuration !== undefined ? updates.statusDuration : this.statusDuration,
+      pain: updates.pain !== undefined ? updates.pain : this.pain,
+      bleeding: updates.bleeding !== undefined ? updates.bleeding : this.bleeding,
+      infection: updates.infection !== undefined ? updates.infection : this.infection,
+      subParts: updates.subParts !== undefined ? updates.subParts : this.subParts,
+    });
+  }
+
+  /**
    * 从子部位属性创建
    */
   static fromSubPartProps(props: SubBodyPartProps): BodyPart {
@@ -143,8 +167,8 @@ export class BodyPart {
     const newHP = Math.max(0, this.currentHP - damage);
     const destroyed = newHP === 0;
 
-    // 检查是否应该断肢
-    const shouldSever = destroyed && this.canBeMissing && this.currentHP < this.maxHP * 0.1;
+    // 检查是否应该断肢：可缺失部位被完全摧毁时断肢
+    const shouldSever = destroyed && this.canBeMissing;
 
     // 确定新状态
     let newStatus = this.status;
@@ -389,9 +413,7 @@ export class BodyPart {
     };
 
     // 根据部位类型应用影响
-    const typeName = (this.type as string).toLowerCase();
-
-    if (typeName.includes('leg') || typeName.includes('foot')) {
+    if (this.type === BodyPartType.LEG || this.type === BodyPartType.FOOT) {
       // 腿部影响移动速度
       impact.speedModifier = efficiency;
       if (!this.isFunctional()) {
@@ -399,7 +421,7 @@ export class BodyPart {
       }
     }
 
-    if (typeName.includes('arm') || typeName.includes('hand')) {
+    if (this.type === BodyPartType.ARM || this.type === BodyPartType.HAND) {
       // 手臂影响操作能力
       impact.dexterityModifier = efficiency;
       impact.combatModifier = efficiency;
@@ -408,12 +430,12 @@ export class BodyPart {
       }
     }
 
-    if (typeName.includes('head') || typeName.includes('eye')) {
+    if (this.type === BodyPartType.HEAD || this.type === BodyPartType.SENSOR) {
       // 头部影响感知
       impact.perceptionModifier = efficiency;
     }
 
-    if (typeName.includes('torso')) {
+    if (this.type === BodyPartType.TORSO) {
       // 躯干影响负重和战斗
       impact.carryModifier = efficiency;
       impact.combatModifier = efficiency;
@@ -498,10 +520,13 @@ export class BodyPart {
    */
   static fromJSON(json: Record<string, any>): BodyPart {
     const subParts = json.subParts
-      ? Map<string, BodyPart>(
-          Object.entries(json.subParts).map(([id, part]) => [id, BodyPart.fromJSON(part as any)])
+      ? Map<SubBodyPartId, BodyPart>(
+          Object.entries(json.subParts).map(([id, part]) => [
+            parseInt(id) as unknown as SubBodyPartId,
+            BodyPart.fromJSON(part as any),
+          ])
         )
-      : Map<string, BodyPart>();
+      : Map<SubBodyPartId, BodyPart>();
 
     return new BodyPart({
       id: json.id,

@@ -85,7 +85,7 @@ export class GameState {
     const newPos = new Tripoint({
       x: this.player.position.x + dx,
       y: this.player.position.y + dy,
-      z: this.player.z + dz,
+      z: this.player.position.z + dz,
     });
 
     // 克隆玩家以保持不可变性

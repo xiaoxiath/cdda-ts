@@ -156,7 +156,7 @@ export class Oracle {
 
     // 支持 native Map 和 Immutable.js Map
     const creatures = map.creatures as any;
-    const creatureEntries = creatures.entries ? Array.from(creatures.entries()) : Object.entries(creatures);
+    const creatureEntries: [string, any][] = creatures.entries ? Array.from(creatures.entries()) : Object.entries(creatures);
 
     // 遍历地图上的所有生物
     for (const [entityId, creature] of creatureEntries) {
@@ -232,7 +232,7 @@ export class Oracle {
     const perceptionEntries: [string, PerceptionData][] = [];
 
     const creatures = map.creatures as any;
-    const creatureEntries = creatures.entries ? Array.from(creatures.entries()) : Object.entries(creatures);
+    const creatureEntries: [string, any][] = creatures.entries ? Array.from(creatures.entries()) : Object.entries(creatures);
 
     for (const [entityId, creature] of creatureEntries) {
       if (entityId === this.owner.id) {
@@ -482,10 +482,11 @@ export class Oracle {
    */
   isLocationSafe(position: Tripoint): boolean {
     // 检查位置附近是否有高威胁目标（距离 < 5）
-    const entries = this.perceivedEntities.entries ? Array.from(this.perceivedEntities.entries()) : Object.entries(this.perceivedEntities);
+    const entries = this.perceivedEntities.entries ? Array.from(this.perceivedEntities.entries()) : Object.entries(this.perceivedEntities) as unknown as [string, PerceptionData][];
 
     for (const [entityId, perception] of entries) {
-      const distance = this.getDistanceTo(position, perception.position);
+      const perceptionData = perception as PerceptionData;
+      const distance = this.getDistanceTo(position, perceptionData.position);
       // 只有很近的威胁才被视为危险
       if (distance < 5) {
         const threat = this.threats.get(entityId) ?? ThreatLevelEnum.NONE;

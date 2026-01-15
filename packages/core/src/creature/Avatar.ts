@@ -6,8 +6,10 @@
 
 import { Creature } from './Creature';
 import { Tripoint } from '../coordinates/Tripoint';
-import { BodyPartId, CreatureSize, CreatureType, CharacterStats, BodyPartData, BodyPartType } from './types';
+import { BodyPartId, CreatureSize, CreatureType, CharacterStats } from './types';
 import { SurvivalStats } from './SurvivalStats';
+import { BodyPartManager } from '../body/BodyPartManager';
+import { BodyPart } from '../body/BodyPart';
 
 /**
  * 玩家角色类
@@ -21,9 +23,9 @@ export class Avatar extends Creature {
   public readonly stats: CharacterStats;
 
   /**
-   * 身体部位映射
+   * 身体部位管理器
    */
-  private readonly bodyParts: Map<BodyPartId, BodyPartData>;
+  private readonly bodyPartManager: BodyPartManager;
 
   /**
    * 生存统计
@@ -52,78 +54,8 @@ export class Avatar extends Creature {
   ) {
     super(id, position, name, CreatureSize.MEDIUM);
     this.stats = stats;
-    this.bodyParts = Avatar.createDefaultBodyParts();
+    this.bodyPartManager = BodyPartManager.createHuman(id, name);
     this.survivalStats = survivalStats ?? SurvivalStats.create();
-  }
-
-  /**
-   * 创建默认的身体部位
-   */
-  private static createDefaultBodyParts(): Map<BodyPartId, BodyPartData> {
-    const parts = new Map<BodyPartId, BodyPartData>();
-
-    // 定义所有身体部位的默认HP
-    const defaultHP: Record<BodyPartId, number> = {
-      [BodyPartId.TORSO]: 80,
-      [BodyPartId.HEAD]: 60,
-      [BodyPartId.EYES]: 20,
-      [BodyPartId.MOUTH]: 30,
-      [BodyPartId.ARM_L]: 50,
-      [BodyPartId.ARM_R]: 50,
-      [BodyPartId.HAND_L]: 40,
-      [BodyPartId.HAND_R]: 40,
-      [BodyPartId.LEG_L]: 60,
-      [BodyPartId.LEG_R]: 60,
-      [BodyPartId.FOOT_L]: 30,
-      [BodyPartId.FOOT_R]: 30,
-    };
-
-    // 定义身体部位类型
-    const partTypes: Record<BodyPartId, BodyPartType> = {
-      [BodyPartId.TORSO]: BodyPartType.TORSO,
-      [BodyPartId.HEAD]: BodyPartType.HEAD,
-      [BodyPartId.EYES]: BodyPartType.SENSOR,
-      [BodyPartId.MOUTH]: BodyPartType.MOUTH,
-      [BodyPartId.ARM_L]: BodyPartType.ARM,
-      [BodyPartId.ARM_R]: BodyPartType.ARM,
-      [BodyPartId.HAND_L]: BodyPartType.HAND,
-      [BodyPartId.HAND_R]: BodyPartType.HAND,
-      [BodyPartId.LEG_L]: BodyPartType.LEG,
-      [BodyPartId.LEG_R]: BodyPartType.LEG,
-      [BodyPartId.FOOT_L]: BodyPartType.FOOT,
-      [BodyPartId.FOOT_R]: BodyPartType.FOOT,
-    };
-
-    // 定义身体部位名称
-    const partNames: Record<BodyPartId, string> = {
-      [BodyPartId.TORSO]: '躯干',
-      [BodyPartId.HEAD]: '头部',
-      [BodyPartId.EYES]: '眼睛',
-      [BodyPartId.MOUTH]: '嘴巴',
-      [BodyPartId.ARM_L]: '左臂',
-      [BodyPartId.ARM_R]: '右臂',
-      [BodyPartId.HAND_L]: '左手',
-      [BodyPartId.HAND_R]: '右手',
-      [BodyPartId.LEG_L]: '左腿',
-      [BodyPartId.LEG_R]: '右腿',
-      [BodyPartId.FOOT_L]: '左脚',
-      [BodyPartId.FOOT_R]: '右脚',
-    };
-
-    // 创建所有身体部位
-    for (const id of Object.values(BodyPartId)) {
-      if (typeof id === 'number') {
-        parts.set(id, {
-          id,
-          name: partNames[id],
-          type: partTypes[id],
-          baseHP: defaultHP[id],
-          currentHP: defaultHP[id],
-        });
-      }
-    }
-
-    return parts;
   }
 
   // ========== 类型检查 ==========
@@ -160,23 +92,36 @@ export class Avatar extends Creature {
    * 获取指定身体部位的生命值
    */
   getHP(bodyPart: BodyPartId): number | undefined {
-    const part = this.bodyParts.get(bodyPart);
-    return part?.currentHP;
+    const part = this.bodyPartManager.getPart(bodyPart);
+    if (!part) {
+      return undefined;
+    }
+    return part.currentHP;
   }
 
   /**
    * 获取指定身体部位的最大生命值
    */
   getHPMax(bodyPart: BodyPartId): number | undefined {
-    const part = this.bodyParts.get(bodyPart);
-    return part?.baseHP;
+    const part = this.bodyPartManager.getPart(bodyPart);
+    if (!part) {
+      return undefined;
+    }
+    return part.maxHP;
   }
 
   /**
    * 获取所有身体部位
    */
-  getBodyParts(): ReadonlyMap<BodyPartId, BodyPartData> {
-    return this.bodyParts;
+  getBodyParts(): ReadonlyMap<BodyPartId, BodyPart> {
+    return this.bodyPartManager.getAllParts();
+  }
+
+  /**
+   * 获取身体部位管理器
+   */
+  getBodyPartManager(): BodyPartManager {
+    return this.bodyPartManager;
   }
 
   // ========== 动作和方法 ==========
@@ -205,13 +150,8 @@ export class Avatar extends Creature {
    * @returns 是否仍然存活
    */
   takeDamage(bodyPart: BodyPartId, damage: number): boolean {
-    const part = this.bodyParts.get(bodyPart);
-    if (!part) {
-      return true; // 部位不存在，忽略伤害
-    }
-
-    const newHP = Math.max(0, part.currentHP - damage);
-    (part as any).currentHP = newHP;
+    const newManager = this.bodyPartManager.takeDamage(bodyPart, damage);
+    (this as any).bodyPartManager = newManager;
 
     return !this.isDead();
   }
@@ -223,25 +163,16 @@ export class Avatar extends Creature {
    * @param amount - 治疗量
    */
   heal(bodyPart: BodyPartId, amount: number): void {
-    const part = this.bodyParts.get(bodyPart);
-    if (!part) {
-      return;
-    }
-
-    const newHP = Math.min(part.baseHP, part.currentHP + amount);
-    (part as any).currentHP = newHP;
+    const newManager = this.bodyPartManager.heal(bodyPart, amount);
+    (this as any).bodyPartManager = newManager;
   }
 
   /**
    * 获取总体状态
    */
   getHealthStatus(): string {
-    const totalHP = Array.from(this.bodyParts.values())
-      .reduce((sum, part) => sum + part.currentHP, 0);
-    const maxHP = Array.from(this.bodyParts.values())
-      .reduce((sum, part) => sum + part.baseHP, 0);
-
-    const percentage = (totalHP / maxHP) * 100;
+    const stats = this.bodyPartManager.getStats();
+    const percentage = stats.healthPercentage;
 
     if (percentage >= 90) return '健康';
     if (percentage >= 70) return '轻微受伤';
@@ -277,6 +208,10 @@ export class Avatar extends Creature {
    * 重写父类方法，添加生存状态更新
    */
   override processTurn(isMoving: boolean = false, isFighting: boolean = false): void {
+    // 更新身体部位状态（处理出血、感染等）
+    const newBodyPartManager = this.bodyPartManager.processTurn();
+    (this as any).bodyPartManager = newBodyPartManager;
+
     // 更新生存状态
     const newSurvivalStats = this.survivalStats.processTurn(isMoving, isFighting);
     (this as any).survivalStats = newSurvivalStats;

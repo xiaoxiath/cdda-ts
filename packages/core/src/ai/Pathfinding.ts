@@ -153,7 +153,7 @@ export class Pathfinding {
     // 初始化开放列表和关闭列表
     const openList: PathNode[] = [];
     const closedSet = new Set<string>();
-    const cameFrom = new Map<string, Tripoint>();
+    const cameFrom: Map<string, any> = Map();
 
     // 创建起始节点
     const startNode: PathNode = {
@@ -215,13 +215,19 @@ export class Pathfinding {
         const newGCost = current.gCost + moveCost;
 
         // 查找开放列表中的节点
-        const existingNode = openList.find(n => this.isSamePosition(n.position, neighbor));
+        const existingNodeIndex = openList.findIndex(n => this.isSamePosition(n.position, neighbor));
 
-        if (existingNode) {
-          // 如果找到更短路径，更新
+        if (existingNodeIndex >= 0) {
+          // 如果找到更短路径，更新节点
+          const existingNode = openList[existingNodeIndex];
           if (newGCost < existingNode.gCost) {
-            existingNode.gCost = newGCost;
-            existingNode.fCost = existingNode.gCost + existingNode.hCost;
+            const updatedNode: PathNode = {
+              position: existingNode.position,
+              gCost: newGCost,
+              hCost: existingNode.hCost,
+              fCost: newGCost + existingNode.hCost,
+            };
+            openList[existingNodeIndex] = updatedNode;
             cameFrom.set(neighborKey, current.position);
           }
         } else {
@@ -535,14 +541,14 @@ export class Pathfinding {
 
     // 如果仍然太大，删除最少使用的条目
     if (cache.size >= this.maxCacheSize) {
-      const entries = cache.toArray();
-      entries.sort((a, b) => a.hitCount - b.hitCount);
+      const entries = cache.entrySeq().toArray();
+      entries.sort((a, b) => a[1].hitCount - b[1].hitCount);
 
       // 保留最常用的 80%
       const keepCount = Math.floor(this.maxCacheSize * 0.8);
       const toKeep = entries.slice(-keepCount);
 
-      cache = Map(toKeep.map(e => [this.getCacheKey(e.start, e.end), e]));
+      cache = Map(toKeep.map(e => [e[0], e[1]]));
     }
 
     (this as any)._cache = cache;

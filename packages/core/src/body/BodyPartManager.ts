@@ -8,8 +8,9 @@
  */
 
 import { Map, List } from 'immutable';
-import type { BodyPartId, BodyPartType } from '../creature/types';
-import type { SubBodyPartId, SubBodyPartType } from './SubBodyPart';
+import { BodyPartId, BodyPartType } from '../creature/types';
+import type { SubBodyPartId } from './SubBodyPart';
+import type { SubBodyPartType } from '../combat/types';
 import { SubBodyPart } from './SubBodyPart';
 import { BodyPart } from './BodyPart';
 import {
@@ -88,25 +89,23 @@ export class BodyPartManager {
    * 创建默认的人类身体部位映射
    */
   private static createDefaultHumanParts(): Map<BodyPartId, BodyPart> {
-    const { BodyPartId: BPI, BodyPartType: BPT } = require('../creature/types');
-
     // 定义所有身体部位
     const partConfigs = [
-      { id: BPI.TORSO, type: BPT.TORSO, name: '躯干', hp: 80, size: 10, lethal: true },
-      { id: BPI.HEAD, type: BPT.HEAD, name: '头部', hp: 60, size: 3, lethal: true },
-      { id: BPI.EYES, type: BPT.SENSOR, name: '眼睛', hp: 20, size: 1, lethal: false },
-      { id: BPI.MOUTH, type: BPT.MOUTH, name: '嘴巴', hp: 30, size: 2, lethal: false },
-      { id: BPI.ARM_L, type: BPT.ARM, name: '左臂', hp: 50, size: 4, lethal: false },
-      { id: BPI.ARM_R, type: BPT.ARM, name: '右臂', hp: 50, size: 4, lethal: false },
-      { id: BPI.HAND_L, type: BPT.HAND, name: '左手', hp: 40, size: 2, lethal: false },
-      { id: BPI.HAND_R, type: BPT.HAND, name: '右手', hp: 40, size: 2, lethal: false },
-      { id: BPI.LEG_L, type: BPT.LEG, name: '左腿', hp: 60, size: 5, lethal: false },
-      { id: BPI.LEG_R, type: BPT.LEG, name: '右腿', hp: 60, size: 5, lethal: false },
-      { id: BPI.FOOT_L, type: BPT.FOOT, name: '左脚', hp: 30, size: 2, lethal: false },
-      { id: BPI.FOOT_R, type: BPT.FOOT, name: '右脚', hp: 30, size: 2, lethal: false },
+      { id: BodyPartId.TORSO, type: BodyPartType.TORSO, name: '躯干', hp: 80, size: 10, lethal: true },
+      { id: BodyPartId.HEAD, type: BodyPartType.HEAD, name: '头部', hp: 60, size: 3, lethal: true },
+      { id: BodyPartId.EYES, type: BodyPartType.SENSOR, name: '眼睛', hp: 20, size: 1, lethal: false },
+      { id: BodyPartId.MOUTH, type: BodyPartType.MOUTH, name: '嘴巴', hp: 30, size: 2, lethal: false },
+      { id: BodyPartId.ARM_L, type: BodyPartType.ARM, name: '左臂', hp: 50, size: 4, lethal: false },
+      { id: BodyPartId.ARM_R, type: BodyPartType.ARM, name: '右臂', hp: 50, size: 4, lethal: false },
+      { id: BodyPartId.HAND_L, type: BodyPartType.HAND, name: '左手', hp: 40, size: 2, lethal: false },
+      { id: BodyPartId.HAND_R, type: BodyPartType.HAND, name: '右手', hp: 40, size: 2, lethal: false },
+      { id: BodyPartId.LEG_L, type: BodyPartType.LEG, name: '左腿', hp: 60, size: 5, lethal: false },
+      { id: BodyPartId.LEG_R, type: BodyPartType.LEG, name: '右腿', hp: 60, size: 5, lethal: false },
+      { id: BodyPartId.FOOT_L, type: BodyPartType.FOOT, name: '左脚', hp: 30, size: 2, lethal: false },
+      { id: BodyPartId.FOOT_R, type: BodyPartType.FOOT, name: '右脚', hp: 30, size: 2, lethal: false },
     ];
 
-    const partsMap = Map<BodyPartId, BodyPart>();
+    let partsMap = Map<BodyPartId, BodyPart>();
 
     for (const config of partConfigs) {
       const part = BodyPart.create({
@@ -117,7 +116,7 @@ export class BodyPartManager {
         currentHP: config.hp,
         size: config.size,
         isLethal: config.lethal,
-        canBeMissing: !config.lethal && [BPI.ARM_L, BPI.ARM_R, BPI.LEG_L, BPI.LEG_R].includes(config.id),
+        canBeMissing: !config.lethal && [BodyPartId.ARM_L, BodyPartId.ARM_R, BodyPartId.LEG_L, BodyPartId.LEG_R].includes(config.id),
         status: BodyPartStatus.HEALTHY,
         statusDuration: 0,
         pain: 0,
@@ -125,7 +124,7 @@ export class BodyPartManager {
         infection: 0,
       });
 
-      (partsMap as any).set(config.id, part);
+      partsMap = partsMap.set(config.id, part);
     }
 
     return partsMap;
@@ -150,8 +149,7 @@ export class BodyPartManager {
     }
 
     const result = part.takeDamage(damage);
-    const updatedPart = new BodyPart({
-      ...part,
+    const updatedPart = part.with({
       currentHP: result.newHP,
       status: result.effects[0]?.type || part.status,
       statusDuration: result.effects[0]?.duration || 0,
@@ -177,8 +175,7 @@ export class BodyPartManager {
     }
 
     const result = part.heal(amount);
-    const updatedPart = new BodyPart({
-      ...part,
+    const updatedPart = part.with({
       currentHP: result.newHP,
       status: result.statusRemoved ? BodyPartStatus.HEALTHY : part.status,
       statusDuration: result.statusRemoved ? 0 : part.statusDuration,
@@ -225,8 +222,7 @@ export class BodyPartManager {
       if (updatedPart.bleeding > 0) {
         const bleedingDamage = Math.ceil(updatedPart.bleeding);
         const damageResult = updatedPart.takeDamage(bleedingDamage);
-        const damagedPart = new BodyPart({
-          ...updatedPart,
+        const damagedPart = updatedPart.with({
           currentHP: damageResult.newHP,
         });
         newParts = newParts.set(id, damagedPart);
@@ -237,8 +233,7 @@ export class BodyPartManager {
         // 高感染率造成额外伤害
         const infectionDamage = Math.ceil(updatedPart.infection * 2);
         const damageResult = updatedPart.takeDamage(infectionDamage);
-        const damagedPart = new BodyPart({
-          ...updatedPart,
+        const damagedPart = updatedPart.with({
           currentHP: damageResult.newHP,
         });
         newParts = newParts.set(id, damagedPart);
@@ -411,10 +406,8 @@ export class BodyPartManager {
    * 检查是否倒地
    */
   isDowned(): boolean {
-    const { BodyPartId: BPI } = require('../creature/types');
-
-    const leftLeg = this.parts.get(BPI.LEG_L);
-    const rightLeg = this.parts.get(BPI.LEG_R);
+    const leftLeg = this.parts.get(BodyPartId.LEG_L);
+    const rightLeg = this.parts.get(BodyPartId.LEG_R);
 
     const leftLegDown = !leftLeg || !leftLeg.isFunctional();
     const rightLegDown = !rightLeg || !rightLeg.isFunctional();

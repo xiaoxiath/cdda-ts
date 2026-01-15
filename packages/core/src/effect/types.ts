@@ -160,6 +160,16 @@ export interface IntensityChangeTrigger {
   message?: string;
 }
 
+/**
+ * 战斗触发器
+ */
+export interface CombatTrigger {
+  /** 触发类型 */
+  type: 'on_attack' | 'on_hit' | 'on_kill' | 'on_dodge' | 'on_block' | 'on_miss';
+  /** 触发条件（可选） */
+  condition?: string;
+}
+
 // ============================================================================
 // 效果定义接口
 // ============================================================================

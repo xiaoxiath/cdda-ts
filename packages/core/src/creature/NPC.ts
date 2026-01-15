@@ -9,6 +9,8 @@ import { Tripoint } from '../coordinates/Tripoint';
 import { BodyPartId, CreatureSize, CreatureType, CharacterStats } from './types';
 import type { NPCAI } from '../ai/NPCAI';
 import type { GameMap } from '../map/GameMap';
+import { BodyPartManager } from '../body/BodyPartManager';
+import { BodyPart } from '../body/BodyPart';
 
 /**
  * NPC 类数据
@@ -63,6 +65,11 @@ export class NPC extends Creature {
   public readonly faction: string;
 
   /**
+   * 身体部位管理器
+   */
+  private readonly bodyPartManager: BodyPartManager;
+
+  /**
    * AI 控制器（可选）
    * 使用动态属性以保持类不可变
    */
@@ -90,6 +97,7 @@ export class NPC extends Creature {
     this.npcClass = npcClass;
     this.attitude = attitude;
     this.faction = faction;
+    this.bodyPartManager = BodyPartManager.createHuman(id, name);
   }
 
   // ========== 类型检查 ==========
@@ -134,25 +142,78 @@ export class NPC extends Creature {
   }
 
   /**
-   * 获取健康状态（NPC 使用简化版本）
+   * 获取健康状态
    */
   getHealthStatus(): string {
-    // NPC 使用简化的健康状态判断
-    // 如果没有具体的 HP 数据，返回默认状态
-    return '健康';
+    const stats = this.bodyPartManager.getStats();
+    const percentage = stats.healthPercentage;
+
+    if (percentage >= 90) return '健康';
+    if (percentage >= 70) return '轻微受伤';
+    if (percentage >= 40) return '中度受伤';
+    if (percentage >= 20) return '重度受伤';
+    return '濒死';
   }
 
   /**
-   * 获取 HP（应用 NPC 类的乘数）
+   * 获取指定身体部位的生命值
    */
   getHP(bodyPart: BodyPartId): number | undefined {
-    // 基础实现：NPC 使用标准 HP
-    // 未来可以扩展为从 NPC 类加载
-    return undefined;
+    const part = this.bodyPartManager.getPart(bodyPart);
+    if (!part) {
+      return undefined;
+    }
+    return part.currentHP;
   }
 
+  /**
+   * 获取指定身体部位的最大生命值
+   */
   getHPMax(bodyPart: BodyPartId): number | undefined {
-    return undefined;
+    const part = this.bodyPartManager.getPart(bodyPart);
+    if (!part) {
+      return undefined;
+    }
+    return part.maxHP;
+  }
+
+  /**
+   * 获取所有身体部位
+   */
+  getBodyParts(): ReadonlyMap<BodyPartId, BodyPart> {
+    return this.bodyPartManager.getAllParts();
+  }
+
+  /**
+   * 获取身体部位管理器
+   */
+  getBodyPartManager(): BodyPartManager {
+    return this.bodyPartManager;
+  }
+
+  /**
+   * 受到伤害
+   *
+   * @param bodyPart - 受伤的身体部位
+   * @param damage - 伤害值
+   * @returns 是否仍然存活
+   */
+  takeDamage(bodyPart: BodyPartId, damage: number): boolean {
+    const newManager = this.bodyPartManager.takeDamage(bodyPart, damage);
+    (this as any).bodyPartManager = newManager;
+
+    return !this.isDead();
+  }
+
+  /**
+   * 治疗
+   *
+   * @param bodyPart - 要治疗的身体部位
+   * @param amount - 治疗量
+   */
+  heal(bodyPart: BodyPartId, amount: number): void {
+    const newManager = this.bodyPartManager.heal(bodyPart, amount);
+    (this as any).bodyPartManager = newManager;
   }
 
   // ========== 行为方法 ==========
@@ -220,6 +281,10 @@ export class NPC extends Creature {
    * @param map 游戏地图
    */
   processTurn(map?: GameMap): void {
+    // 更新身体部位状态（处理出血、感染等）
+    const newBodyPartManager = this.bodyPartManager.processTurn();
+    (this as any).bodyPartManager = newBodyPartManager;
+
     // 调用父类的 processTurn
     super.processTurn();
 

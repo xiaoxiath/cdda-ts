@@ -8,11 +8,25 @@
 import { Map } from 'immutable';
 import type {
   MaterialId,
-  MaterialDefinition,
   MaterialProperties,
   MaterialResistances,
 } from './types';
 import { DamageType } from '../damage/types';
+
+/**
+ * MaterialDefinition 构造属性
+ */
+interface MaterialDefinitionCtorProps {
+  readonly id: MaterialId;
+  readonly name: string;
+  readonly displayName: string;
+  readonly description?: string;
+  readonly properties: MaterialProperties;
+  readonly resistances: MaterialResistances;
+  readonly baseThickness: number;
+  readonly isMetal?: boolean;
+  readonly isOrganic?: boolean;
+}
 
 /**
  * MaterialDefinition - 材料定义类
@@ -30,7 +44,7 @@ export class MaterialDefinition {
   readonly isMetal!: boolean;
   readonly isOrganic!: boolean;
 
-  private constructor(props: MaterialDefinition) {
+  private constructor(props: MaterialDefinitionCtorProps) {
     this.id = props.id;
     this.name = props.name;
     this.displayName = props.displayName;
@@ -49,7 +63,7 @@ export class MaterialDefinition {
   /**
    * 创建材料定义
    */
-  static create(props: MaterialDefinition): MaterialDefinition {
+  static create(props: MaterialDefinitionCtorProps): MaterialDefinition {
     return new MaterialDefinition(props);
   }
 
@@ -467,7 +481,6 @@ export const MaterialDefinitions = {
     'copper',
     '铜',
     {
-      conductivity: 1.0,
       properties: {
         rigidity: 0.7,
         flexibility: 0.3,
@@ -484,10 +497,7 @@ export const MaterialDefinitions = {
   COTTON: MaterialDefinition.cloth(
     'material_cotton' as any,
     'cotton',
-    '棉布',
-    {
-      flammability: 0.9,
-    }
+    '棉布'
   ),
 
   WOOL: MaterialDefinition.cloth(
@@ -495,7 +505,6 @@ export const MaterialDefinitions = {
     'wool',
     '羊毛',
     {
-      thermalConductivity: 0.05,
       properties: {
         rigidity: 0.1,
         flexibility: 0.9,
